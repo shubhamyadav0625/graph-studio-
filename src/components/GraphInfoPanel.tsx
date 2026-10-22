@@ -4,10 +4,20 @@ import { useGraph } from '../context';
 import { verifyTree } from '../algorithms/verifyTree';
 import { detectCycle } from '../algorithms/detectCycle';
 import { connectedComponents } from '../algorithms/connectedComponents';
-import { FlaskConical, Atom, Layers, AlertCircle, XCircle, CheckCircle2 } from 'lucide-react';
+import { examples, type ExampleKey } from '../data/exampleGraphs';
+import { FlaskConical, Atom, Layers, AlertCircle, XCircle, CheckCircle2, Bookmark } from 'lucide-react';
+
+const PRESETS: Array<{ key: ExampleKey; label: string }> = [
+  { key: 'wheel6', label: 'Wheel (W6)' },
+  { key: 'k33Bipartite', label: 'Bipartite (K3,3)' },
+  { key: 'eulerianEnvelope', label: 'Eulerian Envelope' },
+  { key: 'petersen', label: 'Petersen Graph' },
+  { key: 'validTree', label: 'Tree' },
+  { key: 'cycleGraph', label: 'Triangle Cycle' },
+];
 
 const GraphInfoPanel: React.FC = () => {
-  const { graph, selected } = useGraph();
+  const { graph, setGraph, selected } = useGraph();
   const result = verifyTree(graph);
   const components = connectedComponents(graph);
   const cycle = detectCycle(graph);
@@ -30,8 +40,41 @@ const GraphInfoPanel: React.FC = () => {
     });
   }
 
+  const loadPreset = (key: ExampleKey) => {
+    if (examples[key]) {
+      setGraph({ ...examples[key] });
+      setTimeout(() => {
+        if ((window as any).graphCanvasAutoLayout) {
+          (window as any).graphCanvasAutoLayout();
+        }
+      }, 50);
+    }
+  };
+
   return (
     <div className="w-full lg:w-72 flex flex-col gap-4 select-none">
+      {/* Preset Library Card */}
+      <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2.5 flex items-center gap-1.5">
+          <Bookmark size={15} className="text-indigo-500" />
+          Preset Graph Library
+        </h3>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2.5">
+          Load standard Discrete Mathematics graphs with one click:
+        </p>
+        <div className="grid grid-cols-2 gap-1.5">
+          {PRESETS.map((preset) => (
+            <button
+              key={preset.key}
+              onClick={() => loadPreset(preset.key)}
+              className="px-2.5 py-1.5 text-[11px] font-medium rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] text-slate-700 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-400 dark:hover:border-indigo-800/40 transition-all text-left truncate"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Graph Information Card */}
       <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
         <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Graph Information</h3>

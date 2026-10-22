@@ -6,6 +6,7 @@ import { dfsSteps } from '../algorithms/dfsSteps';
 import { bipartiteSteps, type BipartiteStepState } from '../algorithms/bipartiteSteps';
 import { graphColoringSteps, type ColoringStepState, COLOR_PALETTE } from '../algorithms/graphColoringSteps';
 import { eulerianSteps, type EulerianStepState } from '../algorithms/eulerianSteps';
+import { bipartiteMatchingSteps, type MatchingStepState } from '../algorithms/bipartiteMatchingSteps';
 import type { AlgorithmType, AlgorithmHighlightState, VertexId } from '../types/graph';
 import GraphCanvas from './GraphCanvas';
 import { Play, Pause, ArrowRight, ArrowLeft, RotateCcw } from 'lucide-react';
@@ -22,7 +23,8 @@ type AnyStepState =
   | ({ type: 'dfs' } & DFSState)
   | ({ type: 'bipartite' } & BipartiteStepState)
   | ({ type: 'coloring' } & ColoringStepState)
-  | ({ type: 'eulerian' } & EulerianStepState);
+  | ({ type: 'eulerian' } & EulerianStepState)
+  | ({ type: 'matching' } & MatchingStepState);
 
 const AlgorithmsView: React.FC = () => {
   const { graph } = useGraph();
@@ -50,6 +52,9 @@ const AlgorithmsView: React.FC = () => {
     }
     if (selectedAlgo === 'eulerian') {
       return Array.from(eulerianSteps(graph)).map((s) => ({ ...s, type: 'eulerian' as const }));
+    }
+    if (selectedAlgo === 'matching') {
+      return Array.from(bipartiteMatchingSteps(graph)).map((s) => ({ ...s, type: 'matching' as const }));
     }
     return [];
   }, [selectedAlgo, startVertex, graph]);
@@ -141,6 +146,19 @@ const AlgorithmsView: React.FC = () => {
       };
     }
 
+    if (currentStepData.type === 'matching') {
+      const matchedEdgeIds = currentStepData.matchedEdges.map(
+        (e) => `e_${[e.source, e.target].sort().join('_')}`
+      );
+      return {
+        mode: 'matching',
+        currentNode: currentStepData.currentVertex,
+        partitionA: currentStepData.partitionA,
+        partitionB: currentStepData.partitionB,
+        matchedEdgeIds,
+      };
+    }
+
     return null;
   }, [currentStepData, startVertex]);
 
@@ -189,7 +207,7 @@ const AlgorithmsView: React.FC = () => {
           Graph Algorithm Stepper
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Interactive step-by-step visualizations for traversals, coloring, and Eulerian paths
+          Interactive step-by-step visualizations for traversals, coloring, Eulerian paths, and bipartite matching
         </p>
       </div>
 
@@ -201,6 +219,7 @@ const AlgorithmsView: React.FC = () => {
           { id: 'bipartite', label: 'Bipartite 2-Coloring' },
           { id: 'coloring', label: 'Welsh–Powell Coloring' },
           { id: 'eulerian', label: 'Eulerian Circuit' },
+          { id: 'matching', label: 'Bipartite Matching' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -527,6 +546,51 @@ const AlgorithmsView: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Bipartite Matching State */}
+            {currentStepData?.type === 'matching' && (
+              <div className="space-y-3 text-xs">
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400">Matched Pairs:</span>
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {currentStepData.matchedPairs.map((pair, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded bg-pink-50 dark:bg-pink-950/60 border border-pink-200 dark:border-pink-800 text-pink-600 dark:text-pink-400 font-mono text-[11px] font-bold"
+                      >
+                        ({pair.u}, {pair.v})
+                      </span>
+                    ))}
+                    {currentStepData.matchedPairs.length === 0 && (
+                      <span className="text-slate-400 italic">None yet</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400">Unmatched Vertices:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {currentStepData.unmatchedVertices.map((v) => (
+                      <span key={v} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono text-[10px]">
+                        {v}
+                      </span>
+                    ))}
+                    {currentStepData.unmatchedVertices.length === 0 && (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                        None (Perfect Matching!)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200 dark:border-[#1e2646]">
+                  <span className="text-slate-500 dark:text-slate-400">Matching Cardinality |M*|:</span>
+                  <span className="font-bold text-pink-600 dark:text-pink-400 ml-1.5">
+                    {currentStepData.maxMatchingSize}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-1.5 transition-colors">
@@ -539,6 +603,7 @@ const AlgorithmsView: React.FC = () => {
               {selectedAlgo === 'bipartite' && 'Uses 2-coloring BFS to partition vertices into two independent sets or isolate an odd-cycle witness.'}
               {selectedAlgo === 'coloring' && 'Welsh–Powell sorts vertices by descending degree and applies greedy coloring to establish an upper bound for χ(G).'}
               {selectedAlgo === 'eulerian' && "Hierholzer's algorithm traces an Eulerian trail by decomposing the graph into closed edge-disjoint cycles."}
+              {selectedAlgo === 'matching' && "Computes maximum cardinality bipartite matching M* via augmenting path DFS satisfying Berge's Lemma."}
             </p>
           </div>
         </div>

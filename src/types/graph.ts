@@ -11,7 +11,7 @@ export interface Graph {
   edges: Edge[];
 }
 
-export type AlgorithmType = 'bfs' | 'dfs' | 'bipartite' | 'coloring' | 'eulerian';
+export type AlgorithmType = 'bfs' | 'dfs' | 'bipartite' | 'coloring' | 'eulerian' | 'matching';
 
 export interface AlgorithmHighlightState {
   mode: AlgorithmType;
@@ -29,4 +29,7 @@ export interface AlgorithmHighlightState {
   // Eulerian specifics
   activeEdgeIds?: string[];
   eulerianTrail?: VertexId[];
+  // Matching specifics
+  matchedEdgeIds?: string[];
+  augmentingPathNodes?: VertexId[];
 }

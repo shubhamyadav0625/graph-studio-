@@ -17,6 +17,12 @@ const MOCKUP_COORDS: Record<string, { x: number; y: number }> = {
   '4': { x: 210, y: 330 },
   '5': { x: 390, y: 330 },
   '7': { x: 500, y: 260 },
+  'A1': { x: 180, y: 100 },
+  'A2': { x: 180, y: 200 },
+  'A3': { x: 180, y: 300 },
+  'B1': { x: 420, y: 100 },
+  'B2': { x: 420, y: 200 },
+  'B3': { x: 420, y: 300 },
 };
 
 const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
@@ -174,6 +180,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
             opacity: 1,
           },
         },
+        {
+          selector: '.matched-edge',
+          style: {
+            width: 5.5,
+            'line-color': '#ec4899',
+            opacity: 1,
+          },
+        },
       ],
       layout: { name: 'preset' },
     });
@@ -284,7 +298,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
 
     // Clean classes and custom inline styles
     cy.nodes().removeClass('selected visited frontier root current-node partition-a partition-b odd-cycle-node');
-    cy.edges().removeClass('active-edge conflicting-edge traversed-edge');
+    cy.edges().removeClass('active-edge conflicting-edge traversed-edge matched-edge');
     cy.nodes().forEach((n) => {
       n.style('background-color', defaultNodeBg);
       n.style('border-color', defaultNodeBorder);
@@ -350,12 +364,18 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
       // Eulerian active edges
       if (highlightState.activeEdgeIds) {
         highlightState.activeEdgeIds.forEach((eid) => {
-          // Check direct id or parsed pair
           cy.$(`edge#${eid}`).addClass('traversed-edge');
         });
       }
+
+      // Matching edges
+      if (highlightState.matchedEdgeIds) {
+        highlightState.matchedEdgeIds.forEach((eid) => {
+          cy.$(`edge#${eid}`).addClass('matched-edge');
+        });
+      }
     } else {
-      // Legacy window fallbacks for backwards compatibility
+      // Legacy window fallbacks
       const bfsVisited = (window as any).bfsVisited as string[] | undefined;
       const bfsFrontier = (window as any).bfsFrontier as string[] | undefined;
       if (bfsVisited && bfsVisited.length > 0) {
