@@ -11,13 +11,14 @@ export interface Graph {
   edges: Edge[];
 }
 
-export type AlgorithmType = 'bfs' | 'dfs' | 'bipartite' | 'coloring' | 'eulerian' | 'matching';
+export type AlgorithmType = 'bfs' | 'dfs' | 'shortestPath' | 'bipartite' | 'coloring' | 'eulerian' | 'matching';
 
 export interface AlgorithmHighlightState {
   mode: AlgorithmType;
   visitedNodes?: VertexId[];
   frontierNodes?: VertexId[];
   rootNode?: VertexId | null;
+  targetNode?: VertexId | null;
   currentNode?: VertexId | null;
   // Bipartite specifics
   partitionA?: VertexId[];
@@ -32,4 +33,8 @@ export interface AlgorithmHighlightState {
   // Matching specifics
   matchedEdgeIds?: string[];
   augmentingPathNodes?: VertexId[];
+  // Shortest Path specifics
+  exploredEdgeIds?: string[];
+  pathEdgeIds?: string[];
+  pathNodes?: VertexId[];
 }

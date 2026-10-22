@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useGraph } from '../context';
 import { bfsSteps, type BFSState } from '../algorithms/bfsSteps';
 import { dfsSteps } from '../algorithms/dfsSteps';
+import { shortestPathSteps, type ShortestPathStepState } from '../algorithms/shortestPathSteps';
 import { bipartiteSteps, type BipartiteStepState } from '../algorithms/bipartiteSteps';
 import { graphColoringSteps, type ColoringStepState, COLOR_PALETTE } from '../algorithms/graphColoringSteps';
 import { eulerianSteps, type EulerianStepState } from '../algorithms/eulerianSteps';
@@ -21,6 +22,7 @@ interface DFSState {
 type AnyStepState =
   | ({ type: 'bfs' } & BFSState)
   | ({ type: 'dfs' } & DFSState)
+  | ({ type: 'shortestPath' } & ShortestPathStepState)
   | ({ type: 'bipartite' } & BipartiteStepState)
   | ({ type: 'coloring' } & ColoringStepState)
   | ({ type: 'eulerian' } & EulerianStepState)
@@ -30,8 +32,21 @@ const AlgorithmsView: React.FC = () => {
   const { graph } = useGraph();
   const [selectedAlgo, setSelectedAlgo] = useState<AlgorithmType>('bfs');
   const [startVertex, setStartVertex] = useState<string>(() => graph.vertices[0] || '1');
+  const [targetVertex, setTargetVertex] = useState<string>(() => graph.vertices[graph.vertices.length - 1] || '1');
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<number>(700);
+
+  // Sync start and target vertex when graph vertices change
+  useEffect(() => {
+    if (graph.vertices.length > 0) {
+      if (!graph.vertices.includes(startVertex)) {
+        setStartVertex(graph.vertices[0]);
+      }
+      if (!graph.vertices.includes(targetVertex)) {
+        setTargetVertex(graph.vertices[graph.vertices.length - 1] || graph.vertices[0]);
+      }
+    }
+  }, [graph.vertices]);
 
   // Pre-generate all steps
   const allSteps: AnyStepState[] = useMemo(() => {
@@ -43,6 +58,11 @@ const AlgorithmsView: React.FC = () => {
     if (selectedAlgo === 'dfs') {
       const start = graph.vertices.includes(startVertex) ? startVertex : graph.vertices[0];
       return Array.from(dfsSteps(graph, start)).map((s) => ({ ...s, type: 'dfs' as const }));
+    }
+    if (selectedAlgo === 'shortestPath') {
+      const start = graph.vertices.includes(startVertex) ? startVertex : graph.vertices[0];
+      const target = graph.vertices.includes(targetVertex) ? targetVertex : graph.vertices[graph.vertices.length - 1] || start;
+      return Array.from(shortestPathSteps(graph, start, target)).map((s) => ({ ...s, type: 'shortestPath' as const }));
     }
     if (selectedAlgo === 'bipartite') {
       return Array.from(bipartiteSteps(graph)).map((s) => ({ ...s, type: 'bipartite' as const }));
@@ -57,22 +77,15 @@ const AlgorithmsView: React.FC = () => {
       return Array.from(bipartiteMatchingSteps(graph)).map((s) => ({ ...s, type: 'matching' as const }));
     }
     return [];
-  }, [selectedAlgo, startVertex, graph]);
+  }, [selectedAlgo, startVertex, targetVertex, graph]);
 
   const [stepIndex, setStepIndex] = useState<number>(0);
-
-  // Sync start vertex
-  useEffect(() => {
-    if (graph.vertices.length > 0 && !graph.vertices.includes(startVertex)) {
-      setStartVertex(graph.vertices[0]);
-    }
-  }, [graph.vertices]);
 
   // Reset step index and playback on algorithm change or graph modification
   useEffect(() => {
     setStepIndex(0);
     setPlaying(false);
-  }, [selectedAlgo, startVertex, graph]);
+  }, [selectedAlgo, startVertex, targetVertex, graph]);
 
   const currentStepData = allSteps[stepIndex] || null;
 
@@ -98,6 +111,27 @@ const AlgorithmsView: React.FC = () => {
         currentNode: currentStepData.current,
         visitedNodes: visitedArr,
         frontierNodes: currentStepData.stack,
+      };
+    }
+
+    if (currentStepData.type === 'shortestPath') {
+      const visitedArr = Array.from(currentStepData.visited) as VertexId[];
+      const exploredEdgeIds = currentStepData.exploredEdges.map(
+        (e) => `e_${[e.source, e.target].sort().join('_')}`
+      );
+      const pathEdgeIds = currentStepData.shortestPathEdges.map(
+        (e) => `e_${[e.source, e.target].sort().join('_')}`
+      );
+      return {
+        mode: 'shortestPath',
+        rootNode: startVertex,
+        targetNode: targetVertex,
+        currentNode: currentStepData.currentVertex,
+        visitedNodes: visitedArr,
+        frontierNodes: currentStepData.queue,
+        exploredEdgeIds,
+        pathEdgeIds,
+        pathNodes: currentStepData.shortestPath,
       };
     }
 
@@ -160,7 +194,7 @@ const AlgorithmsView: React.FC = () => {
     }
 
     return null;
-  }, [currentStepData, startVertex]);
+  }, [currentStepData, startVertex, targetVertex]);
 
   const stepForward = () => {
     if (stepIndex < allSteps.length - 1) {
@@ -207,7 +241,7 @@ const AlgorithmsView: React.FC = () => {
           Graph Algorithm Stepper
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Interactive step-by-step visualizations for traversals, coloring, Eulerian paths, and bipartite matching
+          Interactive step-by-step visualizations for traversals, shortest path, coloring, and matching
         </p>
       </div>
 
@@ -216,6 +250,7 @@ const AlgorithmsView: React.FC = () => {
         {[
           { id: 'bfs', label: 'BFS Traversal' },
           { id: 'dfs', label: 'DFS Traversal' },
+          { id: 'shortestPath', label: 'Shortest Path (BFS)' },
           { id: 'bipartite', label: 'Bipartite 2-Coloring' },
           { id: 'coloring', label: 'Welsh–Powell Coloring' },
           { id: 'eulerian', label: 'Eulerian Circuit' },
@@ -248,14 +283,35 @@ const AlgorithmsView: React.FC = () => {
             </span>
           </div>
 
-          {(selectedAlgo === 'bfs' || selectedAlgo === 'dfs') && (
+          {/* Start Vertex for BFS, DFS, and Shortest Path */}
+          {(selectedAlgo === 'bfs' || selectedAlgo === 'dfs' || selectedAlgo === 'shortestPath') && (
             <div>
               <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                Start Vertex
+                Source Vertex
               </label>
               <select
                 value={startVertex}
                 onChange={(e) => setStartVertex(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
+              >
+                {graph.vertices.map((v) => (
+                  <option key={v} value={v}>
+                    Vertex {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Destination Vertex for Shortest Path */}
+          {selectedAlgo === 'shortestPath' && (
+            <div>
+              <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
+                Destination Vertex
+              </label>
+              <select
+                value={targetVertex}
+                onChange={(e) => setTargetVertex(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
               >
                 {graph.vertices.map((v) => (
@@ -353,6 +409,56 @@ const AlgorithmsView: React.FC = () => {
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2.5">
               Algorithm State
             </h3>
+
+            {/* Shortest Path State */}
+            {currentStepData?.type === 'shortestPath' && (
+              <div className="space-y-3 text-xs">
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400">Shortest Path:</span>
+                  <div className="p-2 mt-1 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] font-mono text-[11px] font-semibold break-all">
+                    {currentStepData.shortestPath.length > 0 ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                        {currentStepData.shortestPath.join(' → ')}
+                      </span>
+                    ) : currentStepData.isComplete ? (
+                      <span className="text-rose-500 italic">No path exists (Unreachable)</span>
+                    ) : (
+                      <span className="text-slate-400 italic">Searching...</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200/80 dark:border-[#212b4e]">
+                    <span className="text-[10px] text-slate-400 block">Edge Distance</span>
+                    <span className="text-sm font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                      {currentStepData.pathLength !== null ? `${currentStepData.pathLength} edges` : '—'}
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200/80 dark:border-[#212b4e]">
+                    <span className="text-[10px] text-slate-400 block">Discovered Nodes</span>
+                    <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-200">
+                      {currentStepData.visited.size} / {graph.vertices.length}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400">BFS Queue:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {currentStepData.queue.map((item: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                    {currentStepData.queue.length === 0 && <span className="text-slate-400 italic">Empty</span>}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* BFS State */}
             {currentStepData?.type === 'bfs' && (
@@ -600,6 +706,7 @@ const AlgorithmsView: React.FC = () => {
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
               {selectedAlgo === 'bfs' && 'Explores all neighbors at the current depth before descending deeper.'}
               {selectedAlgo === 'dfs' && 'Explores as far as possible along each branch before backtracking.'}
+              {selectedAlgo === 'shortestPath' && 'Finds the optimal path with minimum edge count between source and destination using Breadth First Search (BFS).'}
               {selectedAlgo === 'bipartite' && 'Uses 2-coloring BFS to partition vertices into two independent sets or isolate an odd-cycle witness.'}
               {selectedAlgo === 'coloring' && 'Welsh–Powell sorts vertices by descending degree and applies greedy coloring to establish an upper bound for χ(G).'}
               {selectedAlgo === 'eulerian' && "Hierholzer's algorithm traces an Eulerian trail by decomposing the graph into closed edge-disjoint cycles."}

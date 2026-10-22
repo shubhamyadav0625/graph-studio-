@@ -115,6 +115,15 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
           },
         },
         {
+          selector: '.target-node',
+          style: {
+            'background-color': '#dc2626',
+            'border-color': '#f87171',
+            'border-width': 4,
+            color: '#ffffff',
+          },
+        },
+        {
           selector: '.frontier',
           style: {
             'background-color': '#d97706',
@@ -131,6 +140,15 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
             'background-color': '#0284c7',
             width: 52,
             height: 52,
+          },
+        },
+        {
+          selector: '.path-node',
+          style: {
+            'background-color': '#10b981',
+            'border-color': '#34d399',
+            'border-width': 4.5,
+            color: '#ffffff',
           },
         },
         {
@@ -186,6 +204,23 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
             width: 5.5,
             'line-color': '#ec4899',
             opacity: 1,
+          },
+        },
+        {
+          selector: '.explored-edge',
+          style: {
+            width: 3.5,
+            'line-color': '#38bdf8',
+            opacity: 0.9,
+          },
+        },
+        {
+          selector: '.path-edge',
+          style: {
+            width: 6,
+            'line-color': '#10b981',
+            opacity: 1,
+            'z-index': 10,
           },
         },
       ],
@@ -297,8 +332,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
     });
 
     // Clean classes and custom inline styles
-    cy.nodes().removeClass('selected visited frontier root current-node partition-a partition-b odd-cycle-node');
-    cy.edges().removeClass('active-edge conflicting-edge traversed-edge matched-edge');
+    cy.nodes().removeClass('selected visited frontier root target-node current-node path-node partition-a partition-b odd-cycle-node');
+    cy.edges().removeClass('active-edge conflicting-edge traversed-edge matched-edge explored-edge path-edge');
     cy.nodes().forEach((n) => {
       n.style('background-color', defaultNodeBg);
       n.style('border-color', defaultNodeBorder);
@@ -313,12 +348,15 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
       if (highlightState.rootNode) {
         cy.$(`node#${highlightState.rootNode}`).addClass('root');
       }
+      if (highlightState.targetNode) {
+        cy.$(`node#${highlightState.targetNode}`).addClass('target-node');
+      }
       if (highlightState.currentNode) {
         cy.$(`node#${highlightState.currentNode}`).addClass('current-node');
       }
       if (highlightState.visitedNodes) {
         highlightState.visitedNodes.forEach((id) => {
-          if (id !== highlightState.rootNode) {
+          if (id !== highlightState.rootNode && id !== highlightState.targetNode) {
             cy.$(`node#${id}`).addClass('visited');
           }
         });
@@ -326,6 +364,23 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
       if (highlightState.frontierNodes) {
         highlightState.frontierNodes.forEach((id) => {
           cy.$(`node#${id}`).addClass('frontier');
+        });
+      }
+
+      // Shortest path nodes and edges
+      if (highlightState.exploredEdgeIds) {
+        highlightState.exploredEdgeIds.forEach((eid) => {
+          cy.$(`edge#${eid}`).addClass('explored-edge');
+        });
+      }
+      if (highlightState.pathEdgeIds) {
+        highlightState.pathEdgeIds.forEach((eid) => {
+          cy.$(`edge#${eid}`).addClass('path-edge');
+        });
+      }
+      if (highlightState.pathNodes) {
+        highlightState.pathNodes.forEach((id) => {
+          cy.$(`node#${id}`).addClass('path-node');
         });
       }
 
