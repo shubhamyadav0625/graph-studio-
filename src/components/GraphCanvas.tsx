@@ -2,12 +2,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Cytoscape from 'cytoscape';
 import { useGraph, useTheme } from '../context';
-import type { VertexId } from '../types/graph';
+import type { VertexId, AlgorithmHighlightState } from '../types/graph';
 import { MousePointer, Hand, ZoomIn, ZoomOut, Maximize2, Network } from 'lucide-react';
 
 interface GraphCanvasProps {
-  visited?: VertexId[];
-  frontier?: VertexId[];
+  highlightState?: AlgorithmHighlightState | null;
 }
 
 const MOCKUP_COORDS: Record<string, { x: number; y: number }> = {
@@ -20,7 +19,7 @@ const MOCKUP_COORDS: Record<string, { x: number; y: number }> = {
   '7': { x: 500, y: 260 },
 };
 
-const GraphCanvas: React.FC<GraphCanvasProps> = () => {
+const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Cytoscape.Core | null>(null);
   const [activeTool, setActiveTool] = useState<'select' | 'pan'>('select');
@@ -119,10 +118,59 @@ const GraphCanvas: React.FC<GraphCanvasProps> = () => {
           },
         },
         {
+          selector: '.current-node',
+          style: {
+            'border-width': 5,
+            'border-color': '#38bdf8',
+            'background-color': '#0284c7',
+            width: 52,
+            height: 52,
+          },
+        },
+        {
+          selector: '.partition-a',
+          style: {
+            'background-color': '#4f46e5',
+            'border-color': '#818cf8',
+            'border-width': 3.5,
+          },
+        },
+        {
+          selector: '.partition-b',
+          style: {
+            'background-color': '#db2777',
+            'border-color': '#f472b6',
+            'border-width': 3.5,
+          },
+        },
+        {
+          selector: '.odd-cycle-node',
+          style: {
+            'border-color': '#ef4444',
+            'border-width': 4.5,
+          },
+        },
+        {
           selector: '.active-edge',
           style: {
             width: 4,
             'line-color': '#818cf8',
+            opacity: 1,
+          },
+        },
+        {
+          selector: '.conflicting-edge',
+          style: {
+            width: 5,
+            'line-color': '#ef4444',
+            opacity: 1,
+          },
+        },
+        {
+          selector: '.traversed-edge',
+          style: {
+            width: 4.5,
+            'line-color': '#10b981',
             opacity: 1,
           },
         },
@@ -181,10 +229,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = () => {
     };
   }, [theme]);
 
-  // Sync elements
+  // Sync elements & apply highlights
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
+
+    const isDark = theme === 'dark';
+    const defaultNodeBg = isDark ? '#2a3465' : '#4f46e5';
+    const defaultNodeBorder = isDark ? '#6366f1' : '#4338ca';
 
     const currentNodeIds = new Set(cy.nodes().map((n) => n.id()));
     const graphNodeIds = new Set(graph.vertices);
@@ -230,25 +282,93 @@ const GraphCanvas: React.FC<GraphCanvasProps> = () => {
       }
     });
 
-    cy.nodes().removeClass('selected visited frontier root');
-    cy.edges().removeClass('active-edge');
+    // Clean classes and custom inline styles
+    cy.nodes().removeClass('selected visited frontier root current-node partition-a partition-b odd-cycle-node');
+    cy.edges().removeClass('active-edge conflicting-edge traversed-edge');
+    cy.nodes().forEach((n) => {
+      n.style('background-color', defaultNodeBg);
+      n.style('border-color', defaultNodeBorder);
+    });
 
     selected.forEach((id) => {
       cy.$(`node#${id}`).addClass('selected');
     });
 
-    const bfsVisited = (window as any).bfsVisited as string[] | undefined;
-    const bfsFrontier = (window as any).bfsFrontier as string[] | undefined;
-    if (bfsVisited && bfsVisited.length > 0) {
-      cy.$(`node#${bfsVisited[0]}`).addClass('root');
-      bfsVisited.slice(1).forEach((id) => {
-        cy.$(`node#${id}`).addClass('visited');
-      });
-    }
-    if (bfsFrontier) {
-      bfsFrontier.forEach((id) => {
-        cy.$(`node#${id}`).addClass('frontier');
-      });
+    // 1. Check highlightState prop
+    if (highlightState) {
+      if (highlightState.rootNode) {
+        cy.$(`node#${highlightState.rootNode}`).addClass('root');
+      }
+      if (highlightState.currentNode) {
+        cy.$(`node#${highlightState.currentNode}`).addClass('current-node');
+      }
+      if (highlightState.visitedNodes) {
+        highlightState.visitedNodes.forEach((id) => {
+          if (id !== highlightState.rootNode) {
+            cy.$(`node#${id}`).addClass('visited');
+          }
+        });
+      }
+      if (highlightState.frontierNodes) {
+        highlightState.frontierNodes.forEach((id) => {
+          cy.$(`node#${id}`).addClass('frontier');
+        });
+      }
+
+      // Bipartite partitions
+      if (highlightState.partitionA) {
+        highlightState.partitionA.forEach((id) => {
+          cy.$(`node#${id}`).addClass('partition-a');
+        });
+      }
+      if (highlightState.partitionB) {
+        highlightState.partitionB.forEach((id) => {
+          cy.$(`node#${id}`).addClass('partition-b');
+        });
+      }
+      if (highlightState.oddCycle) {
+        highlightState.oddCycle.forEach((id) => {
+          cy.$(`node#${id}`).addClass('odd-cycle-node');
+        });
+      }
+      if (highlightState.conflictingEdge) {
+        const edgeId = makeEdgeId(highlightState.conflictingEdge.source, highlightState.conflictingEdge.target);
+        cy.$(`edge#${edgeId}`).addClass('conflicting-edge');
+      }
+
+      // Graph Coloring
+      if (highlightState.nodeColors) {
+        Object.entries(highlightState.nodeColors).forEach(([vId, hexColor]) => {
+          const node = cy.$(`node#${vId}`);
+          if (node.length > 0) {
+            node.style('background-color', hexColor);
+            node.style('border-color', '#ffffff');
+          }
+        });
+      }
+
+      // Eulerian active edges
+      if (highlightState.activeEdgeIds) {
+        highlightState.activeEdgeIds.forEach((eid) => {
+          // Check direct id or parsed pair
+          cy.$(`edge#${eid}`).addClass('traversed-edge');
+        });
+      }
+    } else {
+      // Legacy window fallbacks for backwards compatibility
+      const bfsVisited = (window as any).bfsVisited as string[] | undefined;
+      const bfsFrontier = (window as any).bfsFrontier as string[] | undefined;
+      if (bfsVisited && bfsVisited.length > 0) {
+        cy.$(`node#${bfsVisited[0]}`).addClass('root');
+        bfsVisited.slice(1).forEach((id) => {
+          cy.$(`node#${id}`).addClass('visited');
+        });
+      }
+      if (bfsFrontier) {
+        bfsFrontier.forEach((id) => {
+          cy.$(`node#${id}`).addClass('frontier');
+        });
+      }
     }
 
     if (selected.length === 2) {
@@ -258,7 +378,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = () => {
     }
 
     cy.nodes().grabify();
-  }, [graph, selected]);
+  }, [graph, selected, highlightState, theme]);
 
   const handleZoomIn = () => {
     const cy = cyRef.current;
@@ -360,7 +480,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = () => {
         }`}
       />
 
-      {/* Bottom Zoom & Grid Bar (as shown in Screen 2) */}
+      {/* Bottom Zoom & Grid Bar */}
       <div className={`absolute bottom-3.5 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-xl ${
         isDark ? 'bg-[#141a30]/90 border border-[#212b4e]' : 'bg-white/95 border border-slate-200'
       } text-xs shadow-lg backdrop-blur-sm`}>
