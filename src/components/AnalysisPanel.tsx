@@ -4,49 +4,59 @@ import { useGraph } from '../context';
 import { verifyTree } from '../algorithms/verifyTree';
 import { detectCycle } from '../algorithms/detectCycle';
 import { connectedComponents } from '../algorithms/connectedComponents';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { checkBipartite } from '../algorithms/bipartite';
+import { checkEulerian } from '../algorithms/eulerian';
+import { checkPlanarity } from '../algorithms/planarity';
+import { greedyColoring } from '../algorithms/graphColoring';
+import { CheckCircle2, AlertCircle, Sparkles, Compass, ShieldCheck } from 'lucide-react';
 
 const AnalysisPanel: React.FC = () => {
   const { graph } = useGraph();
-  const result = verifyTree(graph);
+  const treeResult = verifyTree(graph);
   const cycle = detectCycle(graph);
   const components = connectedComponents(graph);
+  const bipartiteResult = checkBipartite(graph);
+  const eulerianResult = checkEulerian(graph);
+  const planarityResult = checkPlanarity(graph);
+  const coloringResult = greedyColoring(graph);
 
   const vCount = graph.vertices.length;
   const eCount = graph.edges.length;
   const hasCycle = cycle.length > 0;
-  const isTree = result.isTree;
+  const isTree = treeResult.isTree;
   const isConnected = components.length <= 1 && vCount > 0;
 
-  const degrees = result.metrics.degrees;
+  const degrees = treeResult.metrics.degrees;
   const degreeValues = Object.values(degrees);
   const maxDegree = degreeValues.length > 0 ? Math.max(...degreeValues) : 0;
   const minDegree = degreeValues.length > 0 ? Math.min(...degreeValues) : 0;
   const avgDegree = vCount > 0 ? ((2 * eCount) / vCount).toFixed(2) : '0';
+  const degreeSum = degreeValues.reduce((a, b) => a + b, 0);
 
   const maxPossibleEdges = (vCount * (vCount - 1)) / 2;
   const density = maxPossibleEdges > 0 ? (eCount / maxPossibleEdges).toFixed(2) : '0';
 
   return (
-    <div className="space-y-4 select-none">
+    <div className="space-y-5 select-none">
       {/* Title & Subtitle */}
       <div>
         <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-          Graph Properties
+          Graph Properties & Discrete Math Verification
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Analyze important properties of the graph
+          Comprehensive Unit 6 syllabus properties verified in real-time
         </p>
       </div>
 
+      {/* Row 1: Core Topological Status Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Card 1: Vertex Degrees Table */}
         <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2.5">Vertex Degrees</h3>
-          <div className="border border-slate-200 dark:border-[#1e2646] rounded-xl overflow-hidden bg-white dark:bg-[#0d1222] transition-colors">
+          <div className="border border-slate-200 dark:border-[#1e2646] rounded-xl overflow-hidden bg-white dark:bg-[#0d1222] transition-colors max-h-48 overflow-y-auto">
             <table className="w-full text-xs font-mono">
               <thead>
-                <tr className="bg-slate-50 dark:bg-[#141a30] border-b border-slate-200 dark:border-[#1e2646] text-slate-400">
+                <tr className="bg-slate-50 dark:bg-[#141a30] border-b border-slate-200 dark:border-[#1e2646] text-slate-400 sticky top-0">
                   <th className="p-2 text-center border-r border-slate-200 dark:border-[#1e2646]">Vertex</th>
                   <th className="p-2 text-center">Degree</th>
                 </tr>
@@ -87,8 +97,8 @@ const AnalysisPanel: React.FC = () => {
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
             {isConnected
-              ? 'The graph is connected. All vertices are reachable from each other.'
-              : 'The graph is disconnected into disjoint components.'}
+              ? 'The graph is fully connected. Every pair of vertices has an existing path.'
+              : `The graph is partitioned into ${components.length} disjoint connected components.`}
           </p>
         </div>
 
@@ -105,8 +115,8 @@ const AnalysisPanel: React.FC = () => {
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
             {hasCycle
-              ? 'The graph contains at least one cycle.'
-              : 'The graph does not contain any simple cycles.'}
+              ? `Contains simple cycles (e.g. ${cycle.join(' → ')}).`
+              : 'The graph does not contain any simple closed loops.'}
           </p>
         </div>
 
@@ -118,29 +128,144 @@ const AnalysisPanel: React.FC = () => {
               isTree ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
             }`}
           >
-            <AlertCircle size={18} />
+            <ShieldCheck size={18} />
             <span>{isTree ? 'Is a Valid Tree' : 'Not a Tree'}</span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
             {isTree
-              ? 'A tree must be connected and acyclic. All conditions satisfied.'
-              : `A tree must be connected and acyclic. ${result.reasons[0] || 'Condition violated.'}`}
+              ? 'A tree must be connected and acyclic (|E| = |V| - 1). Satisfied!'
+              : `A tree must be connected and acyclic. ${treeResult.reasons[0] || 'Condition violated.'}`}
           </p>
         </div>
       </div>
 
-      {/* Row 2: Graph Metrics, Degree Analysis, Special Properties, Graph Type */}
+      {/* Row 2: Unit 6 Discrete Math Theorems (Bipartite, Eulerian, Planarity, Coloring) */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Card 5: Bipartite & 2-Colorability */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-2 transition-colors">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Bipartite / 2-Colorable</h3>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                bipartiteResult.isBipartite
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+              }`}
+            >
+              {bipartiteResult.isBipartite ? 'Bipartite' : 'Not Bipartite'}
+            </span>
+          </div>
+          <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+            {bipartiteResult.isBipartite ? (
+              <>
+                <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                  No odd-length cycles present. Vertices cleanly partitioned into 2 independent sets:
+                </p>
+                <div className="pt-1 font-mono text-[11px] space-y-0.5">
+                  <div><strong className="text-indigo-500">V₁:</strong> [{bipartiteResult.partitionA.join(', ')}]</div>
+                  <div><strong className="text-pink-500">V₂:</strong> [{bipartiteResult.partitionB.join(', ')}]</div>
+                </div>
+              </>
+            ) : (
+              <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                Contains an odd-length cycle [{bipartiteResult.oddCycle?.join(' → ')}]. By theorem, an odd cycle cannot be 2-colored.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Card 6: Eulerian Graphs */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-2 transition-colors">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Eulerian Status</h3>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                eulerianResult.hasEulerianCircuit
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : eulerianResult.hasEulerianPath
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                  : 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/20'
+              }`}
+            >
+              {eulerianResult.eulerianType}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            {eulerianResult.explanation}
+          </p>
+          {eulerianResult.oddDegreeVertices.length > 0 && (
+            <div className="text-[11px] font-mono text-slate-600 dark:text-slate-400">
+              Odd vertices: [{eulerianResult.oddDegreeVertices.join(', ')}]
+            </div>
+          )}
+        </div>
+
+        {/* Card 7: Planarity & Euler Polyhedral Formula */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-2 transition-colors">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Planarity & Bounds</h3>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                planarityResult.isPlanarBoundSatisfied
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+              }`}
+            >
+              {planarityResult.isPlanarBoundSatisfied ? 'Bound Satisfied' : 'Violates Bound'}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            {planarityResult.explanation}
+          </p>
+          <div className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 p-1.5 rounded-lg border border-indigo-200/50 dark:border-indigo-800/30">
+            {planarityResult.eulerFormulaFormula}
+          </div>
+        </div>
+
+        {/* Card 8: Chromatic Number & Vertex Coloring */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-2 transition-colors">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Graph Coloring</h3>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+              χ(G) ≤ {coloringResult.chromaticNumber}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            Welsh-Powell greedy coloring bound: Chromatic number χ(G) is at most {coloringResult.chromaticNumber}.
+          </p>
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {graph.vertices.map((v) => {
+              const cNum = coloringResult.coloring[v] || 1;
+              const colorHex = coloringResult.colorNames[cNum] || '#6366f1';
+              return (
+                <span
+                  key={v}
+                  className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold text-white shadow-xs"
+                  style={{ backgroundColor: colorHex }}
+                >
+                  {v}: C{cNum}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Row 3: Graph Metrics, Degree Analysis, Handshaking Lemma */}
+      <div className="grid gap-4 md:grid-cols-3">
         {/* Graph Metrics */}
         <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Graph Metrics</h3>
-          <div className="space-y-1.5 text-xs">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-1.5">
+            <Compass size={16} className="text-indigo-500" />
+            Graph Metrics
+          </h3>
+          <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Vertices:</span>
+              <span>Order (|V|):</span>
               <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{vCount}</span>
             </div>
             <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Edges:</span>
+              <span>Size (|E|):</span>
               <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{eCount}</span>
             </div>
             <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
@@ -152,49 +277,45 @@ const AnalysisPanel: React.FC = () => {
 
         {/* Degree Analysis */}
         <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Degree Analysis</h3>
-          <div className="space-y-1.5 text-xs">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-1.5">
+            <Sparkles size={16} className="text-indigo-500" />
+            Degree Extrema
+          </h3>
+          <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Max Degree:</span>
+              <span>Max Degree Δ(G):</span>
               <span className="font-mono font-semibold text-slate-800 dark:text-white">{maxDegree}</span>
             </div>
             <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Min Degree:</span>
+              <span>Min Degree δ(G):</span>
               <span className="font-mono font-semibold text-slate-800 dark:text-white">{minDegree}</span>
             </div>
             <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Average Degree:</span>
+              <span>Average Degree d(G):</span>
               <span className="font-mono font-semibold text-slate-800 dark:text-white">{avgDegree}</span>
             </div>
           </div>
         </div>
 
-        {/* Special Properties */}
+        {/* Handshaking Lemma Verification */}
         <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Special Properties</h3>
-          <div className="space-y-1.5 text-xs">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-1.5">
+            <ShieldCheck size={16} className="text-emerald-500" />
+            Handshaking Lemma
+          </h3>
+          <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Simple Graph:</span>
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">Yes</span>
+              <span>Formula:</span>
+              <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">∑ deg(v) = 2|E|</span>
             </div>
             <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Weighted:</span>
-              <span className="font-semibold text-slate-500">No</span>
+              <span>Sum of Degrees:</span>
+              <span className="font-mono font-bold text-slate-800 dark:text-white">{degreeSum}</span>
             </div>
             <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Bipartite:</span>
-              <span className="font-semibold text-slate-400">Not checked</span>
+              <span>2 × Edges (2 × {eCount}):</span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{2 * eCount}</span>
             </div>
-          </div>
-        </div>
-
-        {/* Graph Type */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2">Graph Type</h3>
-          <div className="flex items-center gap-2 mt-4 text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-            <span className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/40">
-              Undirected
-            </span>
           </div>
         </div>
       </div>
