@@ -1,0 +1,412 @@
+// src/components/GraphCanvas.tsx
+import React, { useEffect, useRef, useState } from 'react';
+import Cytoscape from 'cytoscape';
+import { useGraph, useTheme } from '../context';
+import type { VertexId } from '../types/graph';
+import { MousePointer, Hand, ZoomIn, ZoomOut, Maximize2, Network } from 'lucide-react';
+
+interface GraphCanvasProps {
+  visited?: VertexId[];
+  frontier?: VertexId[];
+}
+
+const MOCKUP_COORDS: Record<string, { x: number; y: number }> = {
+  '1': { x: 300, y: 70 },
+  '2': { x: 170, y: 170 },
+  '3': { x: 430, y: 170 },
+  '6': { x: 300, y: 220 },
+  '4': { x: 210, y: 330 },
+  '5': { x: 390, y: 330 },
+  '7': { x: 500, y: 260 },
+};
+
+const GraphCanvas: React.FC<GraphCanvasProps> = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cyRef = useRef<Cytoscape.Core | null>(null);
+  const [activeTool, setActiveTool] = useState<'select' | 'pan'>('select');
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [showGrid, setShowGrid] = useState<boolean>(true);
+  const { theme } = useTheme();
+
+  const {
+    graph,
+    addVertex,
+    selected,
+    toggleSelected,
+  } = useGraph();
+
+  // Initialise Cytoscape
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const isDark = theme === 'dark';
+    const nodeBg = isDark ? '#2a3465' : '#4f46e5';
+    const nodeBorder = isDark ? '#6366f1' : '#4338ca';
+    const edgeColor = isDark ? '#60a5fa' : '#6366f1';
+
+    cyRef.current = Cytoscape({
+      container: containerRef.current,
+      elements: [],
+      boxSelectionEnabled: false,
+      autounselectify: false,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            label: 'data(label)',
+            'background-color': nodeBg,
+            'border-width': 2.5,
+            'border-color': nodeBorder,
+            color: '#ffffff',
+            'font-family': 'system-ui, sans-serif',
+            'font-weight': 'bold',
+            'font-size': 14,
+            'text-valign': 'center',
+            'text-halign': 'center',
+            width: 46,
+            height: 46,
+            'overlay-opacity': 0,
+            'transition-property': 'background-color, border-color, border-width, width, height',
+            'transition-duration': 0.2,
+          },
+        },
+        {
+          selector: 'edge',
+          style: {
+            width: 2.5,
+            'line-color': edgeColor,
+            opacity: 0.85,
+            'curve-style': 'bezier',
+            'overlay-opacity': 0,
+            'transition-property': 'line-color, width, opacity',
+            'transition-duration': 0.2,
+          },
+        },
+        {
+          selector: '.selected',
+          style: {
+            'border-width': 4,
+            'border-color': '#818cf8',
+            'background-color': '#4338ca',
+            color: '#ffffff',
+          },
+        },
+        {
+          selector: '.visited',
+          style: {
+            'background-color': '#1d4ed8',
+            'border-color': '#60a5fa',
+            'border-width': 3.5,
+            color: '#ffffff',
+          },
+        },
+        {
+          selector: '.root',
+          style: {
+            'background-color': '#059669',
+            'border-color': '#10b981',
+            'border-width': 4,
+            color: '#ffffff',
+          },
+        },
+        {
+          selector: '.frontier',
+          style: {
+            'background-color': '#d97706',
+            'border-color': '#f59e0b',
+            'border-width': 3.5,
+            color: '#ffffff',
+          },
+        },
+        {
+          selector: '.active-edge',
+          style: {
+            width: 4,
+            'line-color': '#818cf8',
+            opacity: 1,
+          },
+        },
+      ],
+      layout: { name: 'preset' },
+    });
+
+    const cy = cyRef.current!;
+
+    // Node click
+    cy.on('tap', 'node', (evt) => {
+      const node = evt.target;
+      const id = node.id() as VertexId;
+      toggleSelected(id);
+    });
+
+    // Background click adds node
+    cy.on('tap', (event) => {
+      if (event.target === cy) {
+        const pan = cy.pan();
+        const zoom = cy.zoom();
+        const renderedPos = event.renderedPosition;
+        const x = (renderedPos.x - pan.x) / zoom;
+        const y = (renderedPos.y - pan.y) / zoom;
+
+        const allNumbers = graph.vertices.every((v) => !isNaN(Number(v)));
+        let newId = '';
+        if (allNumbers && graph.vertices.length > 0) {
+          const maxNum = Math.max(...graph.vertices.map((v) => Number(v)));
+          newId = String(maxNum + 1);
+        } else {
+          newId = `v${graph.vertices.length + 1}`;
+        }
+        addVertex(newId);
+
+        setTimeout(() => {
+          const cyInst = cyRef.current;
+          if (cyInst) {
+            const added = cyInst.$(`node#${newId}`);
+            if (added.length > 0) {
+              added.position({ x, y });
+            }
+          }
+        }, 30);
+      }
+    });
+
+    // Zoom listener
+    cy.on('zoom', () => {
+      setZoomLevel(Math.round(cy.zoom() * 100));
+    });
+
+    return () => {
+      cy.destroy();
+      cyRef.current = null;
+    };
+  }, [theme]);
+
+  // Sync elements
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+
+    const currentNodeIds = new Set(cy.nodes().map((n) => n.id()));
+    const graphNodeIds = new Set(graph.vertices);
+
+    graph.vertices.forEach((v, index) => {
+      if (!currentNodeIds.has(v)) {
+        const presetPos = MOCKUP_COORDS[v];
+        const defaultX = presetPos ? presetPos.x : 200 + (index % 4) * 80;
+        const defaultY = presetPos ? presetPos.y : 150 + Math.floor(index / 4) * 90;
+
+        cy.add({
+          group: 'nodes',
+          data: { id: v, label: v },
+          position: { x: defaultX, y: defaultY },
+        });
+      }
+    });
+
+    currentNodeIds.forEach((id) => {
+      if (!graphNodeIds.has(id)) {
+        cy.$(`node#${id}`).remove();
+      }
+    });
+
+    const makeEdgeId = (s: string, t: string) => `e_${[s, t].sort().join('_')}`;
+    const currentEdgeIds = new Set(cy.edges().map((e) => e.id()));
+    const graphEdgeIds = new Set<string>();
+
+    graph.edges.forEach((e) => {
+      const id = makeEdgeId(e.source, e.target);
+      graphEdgeIds.add(id);
+      if (!currentEdgeIds.has(id)) {
+        cy.add({
+          group: 'edges',
+          data: { id, source: e.source, target: e.target },
+        });
+      }
+    });
+
+    currentEdgeIds.forEach((id) => {
+      if (!graphEdgeIds.has(id)) {
+        cy.$(`edge#${id}`).remove();
+      }
+    });
+
+    cy.nodes().removeClass('selected visited frontier root');
+    cy.edges().removeClass('active-edge');
+
+    selected.forEach((id) => {
+      cy.$(`node#${id}`).addClass('selected');
+    });
+
+    const bfsVisited = (window as any).bfsVisited as string[] | undefined;
+    const bfsFrontier = (window as any).bfsFrontier as string[] | undefined;
+    if (bfsVisited && bfsVisited.length > 0) {
+      cy.$(`node#${bfsVisited[0]}`).addClass('root');
+      bfsVisited.slice(1).forEach((id) => {
+        cy.$(`node#${id}`).addClass('visited');
+      });
+    }
+    if (bfsFrontier) {
+      bfsFrontier.forEach((id) => {
+        cy.$(`node#${id}`).addClass('frontier');
+      });
+    }
+
+    if (selected.length === 2) {
+      const [a, b] = selected;
+      const edgeId = makeEdgeId(a, b);
+      cy.$(`edge#${edgeId}`).addClass('active-edge');
+    }
+
+    cy.nodes().grabify();
+  }, [graph, selected]);
+
+  const handleZoomIn = () => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.zoom({ level: cy.zoom() * 1.25, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+  };
+
+  const handleZoomOut = () => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.zoom({ level: cy.zoom() * 0.8, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+  };
+
+  const handleFit = () => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.fit(undefined, 50);
+  };
+
+  const handleAutoLayout = () => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.layout({
+      name: 'cose',
+      animate: true,
+      animationDuration: 500,
+      nodeRepulsion: () => 5000,
+      idealEdgeLength: () => 100,
+      padding: 40,
+    } as any).run();
+  };
+
+  (window as any).graphCanvasAutoLayout = handleAutoLayout;
+
+  const isDark = theme === 'dark';
+
+  return (
+    <div className={`relative w-full h-[450px] rounded-2xl overflow-hidden border ${
+      isDark ? 'border-[#1e2646] bg-[#0c101d]' : 'border-slate-200 bg-white'
+    } shadow-xl flex flex-col select-none transition-colors`}>
+      {/* Floating Left Toolbar */}
+      <div className={`absolute top-4 left-4 z-10 flex flex-col gap-1.5 p-1 rounded-xl ${
+        isDark ? 'bg-[#141a30]/90 border border-[#212b4e]' : 'bg-white/95 border border-slate-200'
+      } shadow-lg backdrop-blur-sm`}>
+        <button
+          onClick={() => setActiveTool('select')}
+          className={`p-2 rounded-lg transition-colors ${
+            activeTool === 'select'
+              ? 'bg-indigo-600 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]'
+              : 'text-slate-400 hover:text-slate-800 dark:hover:text-white'
+          }`}
+          title="Select & Move"
+        >
+          <MousePointer size={15} />
+        </button>
+
+        <button
+          onClick={() => setActiveTool('pan')}
+          className={`p-2 rounded-lg transition-colors ${
+            activeTool === 'pan'
+              ? 'bg-indigo-600 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]'
+              : 'text-slate-400 hover:text-slate-800 dark:hover:text-white'
+          }`}
+          title="Pan View"
+        >
+          <Hand size={15} />
+        </button>
+
+        <button
+          onClick={handleZoomIn}
+          className="p-2 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
+          title="Zoom In"
+        >
+          <ZoomIn size={15} />
+        </button>
+
+        <button
+          onClick={handleZoomOut}
+          className="p-2 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
+          title="Zoom Out"
+        >
+          <ZoomOut size={15} />
+        </button>
+
+        <button
+          onClick={handleFit}
+          className="p-2 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
+          title="Fit Canvas"
+        >
+          <Maximize2 size={15} />
+        </button>
+      </div>
+
+      {/* Main Cytoscape Container */}
+      <div
+        ref={containerRef}
+        className={`w-full h-full cursor-crosshair ${
+          showGrid ? (isDark ? 'canvas-grid-dark' : 'canvas-grid-light') : ''
+        }`}
+      />
+
+      {/* Bottom Zoom & Grid Bar (as shown in Screen 2) */}
+      <div className={`absolute bottom-3.5 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-xl ${
+        isDark ? 'bg-[#141a30]/90 border border-[#212b4e]' : 'bg-white/95 border border-slate-200'
+      } text-xs shadow-lg backdrop-blur-sm`}>
+        <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+          Zoom: {zoomLevel}%
+        </span>
+        <button
+          onClick={handleZoomOut}
+          className="w-5 h-5 flex items-center justify-center rounded bg-slate-200 dark:bg-[#1f284d] text-slate-700 dark:text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors font-bold"
+        >
+          -
+        </button>
+        <button
+          onClick={handleZoomIn}
+          className="w-5 h-5 flex items-center justify-center rounded bg-slate-200 dark:bg-[#1f284d] text-slate-700 dark:text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors font-bold"
+        >
+          +
+        </button>
+        <button
+          onClick={handleFit}
+          className="px-2 py-0.5 rounded bg-slate-200 dark:bg-[#1f284d] text-slate-700 dark:text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors text-[10px] font-semibold"
+        >
+          Fit
+        </button>
+        <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-1" />
+        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-500 dark:text-slate-400">
+          <span>Grid</span>
+          <input
+            type="checkbox"
+            checked={showGrid}
+            onChange={(e) => setShowGrid(e.target.checked)}
+            className="accent-indigo-600 rounded cursor-pointer"
+          />
+        </label>
+      </div>
+
+      {/* Bottom-right Mini-Map Badge */}
+      <div className={`absolute bottom-3.5 right-4 p-2.5 rounded-xl ${
+        isDark ? 'bg-[#131930]/90 border border-[#212b4e]' : 'bg-white/95 border border-slate-200'
+      } shadow-lg backdrop-blur-sm pointer-events-none`}>
+        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-500/30">
+          <Network size={15} className="text-indigo-600 dark:text-indigo-400" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default GraphCanvas;
