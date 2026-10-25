@@ -168,9 +168,9 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
       </div>
 
       {/* Main 3-Column Visualizer Layout matching Reference Screenshot */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
-        {/* Column 1 (span 3): BFS Info, Complexity & Configuration */}
-        <div className="lg:col-span-3 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between space-y-4">
+      <div className="flex flex-col lg:flex-row gap-3.5 items-stretch">
+        {/* Column 1 (Fixed Width): BFS Info, Complexity & Configuration */}
+        <div className="w-full lg:w-[280px] xl:w-[300px] flex-shrink-0 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between space-y-4">
           <div className="space-y-3">
             <div>
               <h3 className="text-sm font-bold text-white tracking-wide">
@@ -186,7 +186,7 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
               <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                 Complexity
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="px-2.5 py-1 rounded-xl bg-[#0d132e] border border-[#182142] text-xs font-mono font-semibold text-slate-200">
                   Time: O(V + E)
                 </span>
@@ -253,37 +253,40 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
           </div>
         </div>
 
-        {/* Column 2 (span 6): Interactive Visual Canvas matching Reference Screenshot */}
-        <div className="lg:col-span-6 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl relative flex flex-col justify-between">
-          {/* Floating Left Canvas Tools */}
-          <div className="absolute left-6 top-6 z-10 flex flex-col gap-2 p-1.5 rounded-2xl bg-[#070a1a]/90 backdrop-blur-md border border-[#1a2346] shadow-xl">
-            <button className="p-2 rounded-xl bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white">
-              <MousePointer size={15} />
-            </button>
-            <button className="p-2 rounded-xl text-slate-400 hover:text-white">
-              <Hand size={15} />
-            </button>
-            <button className="p-2 rounded-xl text-slate-400 hover:text-white">
-              <Plus size={15} />
-            </button>
-            <button className="p-2 rounded-xl text-slate-400 hover:text-white">
-              <Minus size={15} />
-            </button>
-          </div>
+        {/* Column 2 (Flexible Canvas): Interactive Visual Canvas matching Reference Screenshot */}
+        <div className="flex-1 min-w-[320px] p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl relative flex flex-col justify-between">
+          {/* Top Canvas Controls Bar */}
+          <div className="flex items-center justify-between mb-2 z-10">
+            {/* Canvas Tools */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#070a1a]/90 backdrop-blur-md border border-[#1a2346] shadow-md">
+              <button className="p-1.5 rounded-lg bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white">
+                <MousePointer size={14} />
+              </button>
+              <button className="p-1.5 rounded-lg text-slate-400 hover:text-white">
+                <Hand size={14} />
+              </button>
+              <button className="p-1.5 rounded-lg text-slate-400 hover:text-white">
+                <Plus size={14} />
+              </button>
+              <button className="p-1.5 rounded-lg text-slate-400 hover:text-white">
+                <Minus size={14} />
+              </button>
+            </div>
 
-          {/* Floating Top Right Canvas Options (Layout, Maximize) */}
-          <div className="absolute right-6 top-6 z-10 flex items-center gap-2">
-            <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#070a1a]/90 border border-[#1a2346] text-xs text-slate-300">
-              <Sparkles size={13} />
-              <span>Layout ▾</span>
-            </button>
-            <button className="p-1.5 rounded-xl bg-[#070a1a]/90 border border-[#1a2346] text-slate-300">
-              <Maximize2 size={13} />
-            </button>
+            {/* Layout and Fullscreen */}
+            <div className="flex items-center gap-2">
+              <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#070a1a]/90 border border-[#1a2346] text-xs text-slate-300 hover:text-white">
+                <Sparkles size={13} />
+                <span>Layout ▾</span>
+              </button>
+              <button className="p-1.5 rounded-xl bg-[#070a1a]/90 border border-[#1a2346] text-slate-300 hover:text-white">
+                <Maximize2 size={13} />
+              </button>
+            </div>
           </div>
 
           {/* Central Live Step Graphic SVG matching Screenshot */}
-          <div className="h-[280px] w-full flex items-center justify-center relative">
+          <div className="h-[270px] w-full flex items-center justify-center relative py-2">
             <svg width="240" height="230" viewBox="0 0 240 230" className="overflow-visible">
               {/* Graph Edges */}
               <line x1="120" y1="35" x2="50" y2="85" stroke="#38bdf8" strokeWidth="2.5" />
@@ -322,7 +325,7 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
           </div>
 
           {/* Bottom Canvas Legend matching Reference Screenshot */}
-          <div className="flex items-center justify-center gap-5 pt-2 border-t border-[#141b38] text-[11px]">
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2 border-t border-[#141b38] text-[11px]">
             <span className="flex items-center gap-1.5 text-slate-300">
               <span className="w-2.5 h-2.5 rounded-full bg-[#9333ea] shadow-[0_0_8px_rgba(147,51,234,0.9)]" />
               <span>Current</span>
@@ -342,8 +345,8 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
           </div>
         </div>
 
-        {/* Column 3 (span 3): Step Execution & Algorithm State */}
-        <div className="lg:col-span-3 space-y-3.5 flex flex-col justify-between">
+        {/* Column 3 (Fixed Width): Step Execution & Algorithm State */}
+        <div className="w-full lg:w-[280px] xl:w-[300px] flex-shrink-0 space-y-3.5 flex flex-col justify-between">
           {/* Step Execution Card with Playback Controls */}
           <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-3">
             <div className="flex items-center justify-between">

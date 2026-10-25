@@ -114,7 +114,7 @@ const RepresentationsView: React.FC = () => {
       {/* Main Presentation Grid: Flex/Grid with balanced desktop sizing */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
         {/* Card 1: Current Graph SVG */}
-        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
+        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between min-w-0">
           <h3 className="text-xs font-bold text-white mb-2">Current Graph</h3>
           <div className="flex-1 flex items-center justify-center py-2 relative">
             <svg width="190" height="190" viewBox="0 0 220 200" className="overflow-visible">
@@ -144,7 +144,7 @@ const RepresentationsView: React.FC = () => {
         </div>
 
         {/* Card 2: Adjacency List Table */}
-        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
+        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between min-w-0">
           <div>
             <h3 className="text-xs font-bold text-white mb-2.5">Adjacency List</h3>
             <div className="grid grid-cols-12 text-[10px] font-bold text-slate-400 border-b border-[#141b38] pb-1 mb-1.5">
@@ -173,7 +173,7 @@ const RepresentationsView: React.FC = () => {
         </div>
 
         {/* Card 3: Adjacency Matrix */}
-        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between overflow-x-auto">
+        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between overflow-x-auto min-w-0">
           <div>
             <h3 className="text-xs font-bold text-white mb-2.5">
               Adjacency Matrix ({vCount} × {vCount})
@@ -211,7 +211,7 @@ const RepresentationsView: React.FC = () => {
         </div>
 
         {/* Card 4: Incidence Matrix */}
-        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between overflow-x-auto">
+        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between overflow-x-auto min-w-0">
           <div>
             <h3 className="text-xs font-bold text-white mb-2.5">
               Incidence Matrix ({vCount} × {eCount})
