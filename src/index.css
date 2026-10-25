@@ -11,9 +11,9 @@
   }
 
   html.dark {
-    --bg-main: #0c101d;
-    --card-bg: #12172a;
-    --card-border: #1e2646;
+    --bg-main: #060913;
+    --card-bg: #0b1120;
+    --card-border: #17213c;
     --text-primary: #f8fafc;
     --text-muted: #94a3b8;
   }
@@ -27,10 +27,10 @@
   }
 }
 
-/* Subtle dot-grid for graph canvas */
+/* Reference Image Canvas Grid: Subtle cyan/blue dots on deep midnight */
 .canvas-grid-dark {
-  background-color: #0d1222;
-  background-image: radial-gradient(circle, rgba(99, 102, 241, 0.22) 1.5px, transparent 1.5px);
+  background-color: #070d1d;
+  background-image: radial-gradient(circle, rgba(56, 189, 248, 0.22) 1.5px, transparent 1.5px);
   background-size: 24px 24px;
 }
 
@@ -40,37 +40,34 @@
   background-size: 24px 24px;
 }
 
-/* Glow effects */
-.node-glow {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.75), inset 0 0 10px rgba(99, 102, 241, 0.3);
+/* Glow effects matching the reference */
+.glow-purple {
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.65);
 }
 
-.card-glow {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+.glow-cyan {
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.65);
 }
 
-.dark .card-glow {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+.glow-blue {
+  box-shadow: 0 0 18px rgba(59, 130, 246, 0.65);
 }
 
 /* Custom scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  background: #1e293b;
+  border-radius: 9999px;
 }
-.dark ::-webkit-scrollbar-thumb {
-  background: #1e2646;
-}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #313d6a;
+  background: #334155;
 }

@@ -9,8 +9,7 @@ import { graphColoringSteps, type ColoringStepState, COLOR_PALETTE } from '../al
 import { eulerianSteps, type EulerianStepState } from '../algorithms/eulerianSteps';
 import { bipartiteMatchingSteps, type MatchingStepState } from '../algorithms/bipartiteMatchingSteps';
 import type { AlgorithmType, AlgorithmHighlightState, VertexId } from '../types/graph';
-import GraphCanvas from './GraphCanvas';
-import { Play, Pause, ArrowRight, ArrowLeft, RotateCcw } from 'lucide-react';
+import { Play, Pause, FastForward, Rewind, RotateCcw, CheckCircle2, ChevronDown, HelpCircle, Info } from 'lucide-react';
 
 interface DFSState {
   visited: Set<VertexId>;
@@ -28,11 +27,15 @@ type AnyStepState =
   | ({ type: 'eulerian' } & EulerianStepState)
   | ({ type: 'matching' } & MatchingStepState);
 
-const AlgorithmsView: React.FC = () => {
+interface AlgorithmsViewProps {
+  onHighlightChange?: (state: AlgorithmHighlightState | null) => void;
+}
+
+const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) => {
   const { graph } = useGraph();
-  const [selectedAlgo, setSelectedAlgo] = useState<AlgorithmType>('bfs');
-  const [startVertex, setStartVertex] = useState<string>(() => graph.vertices[0] || '1');
-  const [targetVertex, setTargetVertex] = useState<string>(() => graph.vertices[graph.vertices.length - 1] || '1');
+  const [selectedAlgo, setSelectedAlgo] = useState<AlgorithmType>('shortestPath');
+  const [startVertex, setStartVertex] = useState<string>(() => graph.vertices[0] || 'A');
+  const [targetVertex, setTargetVertex] = useState<string>(() => graph.vertices[graph.vertices.length - 1] || 'F');
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<number>(700);
 
@@ -196,6 +199,13 @@ const AlgorithmsView: React.FC = () => {
     return null;
   }, [currentStepData, startVertex, targetVertex]);
 
+  // Sync to parent canvas if callback is provided
+  useEffect(() => {
+    if (onHighlightChange) {
+      onHighlightChange(highlightState);
+    }
+  }, [highlightState, onHighlightChange]);
+
   const stepForward = () => {
     if (stepIndex < allSteps.length - 1) {
       setStepIndex((prev) => prev + 1);
@@ -234,35 +244,25 @@ const AlgorithmsView: React.FC = () => {
   const messageText = currentStepData && 'message' in currentStepData ? currentStepData.message : undefined;
 
   return (
-    <div className="space-y-4 select-none">
-      {/* Title & Subtitle */}
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-          Graph Algorithm Stepper
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Interactive step-by-step visualizations for traversals, shortest path, coloring, and matching
-        </p>
-      </div>
-
-      {/* Algorithm Mode Selection Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] w-fit shadow-xs">
+    <div className="space-y-2.5 select-none text-slate-200">
+      {/* Horizontal Algorithm Tabs matching Reference Image */}
+      <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-[#090e1f] border border-[#16213c] w-fit shadow-lg">
         {[
-          { id: 'bfs', label: 'BFS Traversal' },
-          { id: 'dfs', label: 'DFS Traversal' },
-          { id: 'shortestPath', label: 'Shortest Path (BFS)' },
-          { id: 'bipartite', label: 'Bipartite 2-Coloring' },
-          { id: 'coloring', label: 'Welsh–Powell Coloring' },
-          { id: 'eulerian', label: 'Eulerian Circuit' },
+          { id: 'bfs', label: 'BFS' },
+          { id: 'dfs', label: 'DFS' },
+          { id: 'shortestPath', label: 'Shortest Path' },
+          { id: 'coloring', label: 'Graph Coloring' },
+          { id: 'bipartite', label: 'Bipartite Test' },
+          { id: 'eulerian', label: 'Eulerian Path' },
           { id: 'matching', label: 'Bipartite Matching' },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setSelectedAlgo(tab.id as AlgorithmType)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               selectedAlgo === tab.id
-                ? 'bg-indigo-600 text-white shadow-[0_0_12px_rgba(99,102,241,0.35)]'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-[#5b3bf6] text-white shadow-[0_0_12px_rgba(91,59,246,0.6)]'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-[#131b34]'
             }`}
           >
             {tab.label}
@@ -270,448 +270,291 @@ const AlgorithmsView: React.FC = () => {
         ))}
       </div>
 
-      {/* 3-Column Layout: Controls, Canvas, Status */}
-      <div className="grid gap-4 lg:grid-cols-4 items-start">
-        {/* Column 1: Algorithm Controls */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-3.5 transition-colors">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-              Playback Controls
-            </h3>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-200 dark:border-indigo-800/40">
-              {selectedAlgo.toUpperCase()}
-            </span>
+      {/* 3 Columns matching Bottom Algorithm Workspace in Reference Image */}
+      <div className="grid gap-3 lg:grid-cols-12 items-stretch">
+        {/* Column 1 (span 4): Algorithm Description & Inputs */}
+        <div className="lg:col-span-4 p-3.5 rounded-2xl bg-[#0a1024] border border-[#17213d] shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-[#a855f7]/20 text-[#c084fc]">
+                  <HelpCircle size={16} />
+                </div>
+                <h3 className="text-xs font-bold text-white tracking-wide">
+                  {selectedAlgo === 'shortestPath' && 'Shortest Path (BFS)'}
+                  {selectedAlgo === 'bfs' && 'Breadth First Search (BFS)'}
+                  {selectedAlgo === 'dfs' && 'Depth First Search (DFS)'}
+                  {selectedAlgo === 'bipartite' && 'Bipartite 2-Coloring'}
+                  {selectedAlgo === 'coloring' && 'Welsh–Powell Graph Coloring'}
+                  {selectedAlgo === 'eulerian' && "Hierholzer's Eulerian Trail"}
+                  {selectedAlgo === 'matching' && 'Bipartite Maximum Matching'}
+                </h3>
+              </div>
+              <HelpCircle size={14} className="text-slate-500 hover:text-slate-300 cursor-pointer" />
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
+              {selectedAlgo === 'shortestPath' &&
+                'Finds the shortest path between two vertices in an unweighted graph using Breadth-First Search.'}
+              {selectedAlgo === 'bfs' &&
+                'Explores graph vertices layer-by-layer starting from a selected source vertex.'}
+              {selectedAlgo === 'dfs' &&
+                'Explores as far as possible along each branch before backtracking via recursion call stack.'}
+              {selectedAlgo === 'bipartite' &&
+                'Verifies whether the graph can be partitioned into two independent sets with no odd-length cycles.'}
+              {selectedAlgo === 'coloring' &&
+                'Heuristic vertex coloring using Welsh-Powell degree ordering to bound the chromatic number.'}
+              {selectedAlgo === 'eulerian' &&
+                'Constructs a closed or open Eulerian trail traversing every edge exactly once.'}
+              {selectedAlgo === 'matching' &&
+                "Calculates the maximum cardinality matching in a bipartite graph using augmenting path search."}
+            </p>
+
+            {/* Complexity Specs */}
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] font-mono text-slate-400 mb-3.5">
+              <div>Time Complexity: <span className="text-slate-200">O(V + E)</span></div>
+              <div>Space Complexity: <span className="text-slate-200">O(V)</span></div>
+              <div>Works For: <span className="text-slate-200">Unweighted graphs</span></div>
+              <div>Finds: <span className="text-slate-200">Shortest path (min edges)</span></div>
+            </div>
           </div>
 
-          {/* Start Vertex for BFS, DFS, and Shortest Path */}
-          {(selectedAlgo === 'bfs' || selectedAlgo === 'dfs' || selectedAlgo === 'shortestPath') && (
+          {/* Selectors for Source & Destination */}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#17213d]">
             <div>
-              <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                Source Vertex
-              </label>
-              <select
-                value={startVertex}
-                onChange={(e) => setStartVertex(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
-              >
-                {graph.vertices.map((v) => (
-                  <option key={v} value={v}>
-                    Vertex {v}
-                  </option>
-                ))}
-              </select>
+              <label className="text-[10px] text-slate-400 block mb-1 font-medium">Source Vertex</label>
+              <div className="relative">
+                <select
+                  value={startVertex}
+                  onChange={(e) => setStartVertex(e.target.value)}
+                  className="w-full bg-[#080d1d] border border-[#1b2648] rounded-xl pl-6 pr-6 py-1.5 text-xs text-white focus:outline-none focus:border-[#5b3bf6] appearance-none cursor-pointer"
+                >
+                  {graph.vertices.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute left-2 top-2.5 w-2 h-2 rounded-full bg-[#c084fc]" />
+                <ChevronDown size={12} className="absolute right-2 top-2.5 text-slate-400 pointer-events-none" />
+              </div>
             </div>
-          )}
 
-          {/* Destination Vertex for Shortest Path */}
-          {selectedAlgo === 'shortestPath' && (
             <div>
-              <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                Destination Vertex
-              </label>
-              <select
-                value={targetVertex}
-                onChange={(e) => setTargetVertex(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] rounded-xl px-3 py-1.5 text-xs text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500"
-              >
-                {graph.vertices.map((v) => (
-                  <option key={v} value={v}>
-                    Vertex {v}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => setPlaying(!playing)}
-              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-semibold transition-all ${
-                playing
-                  ? 'bg-amber-600 text-white shadow-[0_0_10px_rgba(245,158,11,0.4)]'
-                  : 'bg-indigo-600 text-white shadow-[0_0_12px_rgba(99,102,241,0.4)] hover:bg-indigo-500'
-              }`}
-            >
-              {playing ? <Pause size={14} /> : <Play size={14} />}
-              <span>{playing ? 'Pause' : 'Start'}</span>
-            </button>
-
-            <button
-              onClick={handleReset}
-              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs font-semibold transition-all"
-            >
-              <RotateCcw size={14} />
-              <span>Reset</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={stepBackward}
-              disabled={stepIndex === 0 || playing}
-              className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-slate-100 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:text-white disabled:opacity-40 text-xs font-semibold transition-all"
-            >
-              <ArrowLeft size={13} />
-              <span>Previous</span>
-            </button>
-
-            <button
-              onClick={stepForward}
-              disabled={stepIndex >= allSteps.length - 1 || playing}
-              className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-slate-100 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:text-white disabled:opacity-40 text-xs font-semibold transition-all"
-            >
-              <span>Next</span>
-              <ArrowRight size={13} />
-            </button>
-          </div>
-
-          <div className="pt-2 border-t border-slate-200 dark:border-[#1e2646]">
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
-              <span>Speed</span>
-              <span className="text-[10px] text-slate-400">
-                {speed < 500 ? 'Fast' : speed > 900 ? 'Slow' : 'Normal'}
-              </span>
-            </div>
-            <input
-              type="range"
-              min="200"
-              max="1400"
-              step="100"
-              value={1600 - speed}
-              onChange={(e) => setSpeed(1600 - Number(e.target.value))}
-              className="w-full accent-indigo-600 h-1.5 bg-slate-200 dark:bg-[#161d36] rounded-lg cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
-              <span>Slow</span>
-              <span>Fast</span>
+              <label className="text-[10px] text-slate-400 block mb-1 font-medium">Destination Vertex</label>
+              <div className="relative">
+                <select
+                  value={targetVertex}
+                  onChange={(e) => setTargetVertex(e.target.value)}
+                  className="w-full bg-[#080d1d] border border-[#1b2648] rounded-xl pl-6 pr-6 py-1.5 text-xs text-white focus:outline-none focus:border-[#5b3bf6] appearance-none cursor-pointer"
+                >
+                  {graph.vertices.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute left-2 top-2.5 w-2 h-2 rounded-full bg-[#38bdf8]" />
+                <ChevronDown size={12} className="absolute right-2 top-2.5 text-slate-400 pointer-events-none" />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Column 2 & 3: Canvas with Step Indicator */}
-        <div className="lg:col-span-2 space-y-2">
-          <GraphCanvas highlightState={highlightState} />
-          <div className="flex items-center justify-between px-2">
-            <span className="px-3.5 py-1 rounded-full bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] text-xs font-mono font-semibold text-indigo-600 dark:text-indigo-300 shadow-md">
-              Step {allSteps.length > 0 ? stepIndex + 1 : 0} of {allSteps.length}
-            </span>
-            {messageText && (
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 italic truncate max-w-sm">
-                {messageText}
+        {/* Column 2 (span 5): Algorithm Controls & Current Step States */}
+        <div className="lg:col-span-5 p-3.5 rounded-2xl bg-[#0a1024] border border-[#17213d] shadow-xl flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <h3 className="text-xs font-bold text-white tracking-wide">Algorithm Controls</h3>
+              <span className="text-[11px] font-mono text-[#a855f7] font-semibold">
+                Step {allSteps.length > 0 ? stepIndex + 1 : 0} / {allSteps.length}
               </span>
-            )}
+            </div>
+
+            {/* Playback Controls Row matching Reference Image */}
+            <div className="flex items-center gap-1.5 mb-3">
+              <button
+                onClick={() => setPlaying(!playing)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl text-xs font-semibold transition-all ${
+                  playing
+                    ? 'bg-amber-600 text-white shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                    : 'bg-[#5b3bf6] text-white shadow-[0_0_12px_rgba(91,59,246,0.6)] hover:bg-[#6c4ef7]'
+                }`}
+              >
+                {playing ? <Pause size={13} /> : <Play size={13} />}
+                <span>{playing ? 'Pause' : 'Play'}</span>
+              </button>
+
+              <button
+                onClick={stepForward}
+                disabled={stepIndex >= allSteps.length - 1 || playing}
+                className="flex items-center justify-center gap-1 py-1.5 px-3 rounded-xl bg-[#080d1d] border border-[#1b2648] text-slate-300 hover:text-white disabled:opacity-40 text-xs font-medium transition-all"
+              >
+                <FastForward size={13} />
+                <span>Next</span>
+              </button>
+
+              <button
+                onClick={stepBackward}
+                disabled={stepIndex === 0 || playing}
+                className="flex items-center justify-center gap-1 py-1.5 px-3 rounded-xl bg-[#080d1d] border border-[#1b2648] text-slate-300 hover:text-white disabled:opacity-40 text-xs font-medium transition-all"
+              >
+                <Rewind size={13} />
+                <span>Previous</span>
+              </button>
+
+              <button
+                onClick={handleReset}
+                className="flex items-center justify-center gap-1 py-1.5 px-3 rounded-xl bg-[#080d1d] border border-[#1b2648] text-slate-400 hover:text-white text-xs font-medium transition-all"
+              >
+                <RotateCcw size={13} />
+                <span>Reset</span>
+              </button>
+            </div>
+
+            {/* Playback Speed Slider matching Reference Image */}
+            <div className="flex items-center justify-between gap-3 text-xs text-slate-400 mb-3">
+              <span className="text-[11px] whitespace-nowrap">Playback Speed</span>
+              <input
+                type="range"
+                min="200"
+                max="1400"
+                step="100"
+                value={1600 - speed}
+                onChange={(e) => setSpeed(1600 - Number(e.target.value))}
+                className="flex-1 accent-[#a855f7] h-1.5 bg-[#080d1d] rounded-lg cursor-pointer"
+              />
+              <span className="text-[11px] font-mono text-slate-400">1x</span>
+            </div>
+
+            {/* Current Step Banner with Blue 'i' icon matching Reference Image */}
+            <div className="flex items-start gap-2 p-2 rounded-xl bg-[#080d1d] border border-[#16213c] mb-3">
+              <div className="p-1 rounded-full bg-[#3b82f6]/20 text-[#38bdf8] flex-shrink-0 mt-0.5">
+                <Info size={13} />
+              </div>
+              <div className="text-xs">
+                <span className="font-semibold text-white block text-[11px]">Current Step</span>
+                <span className="text-slate-400 text-[11px] leading-tight block">
+                  {messageText || 'Step execution initialized.'}
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Column 4: Algorithm Live State & Summary */}
-        <div className="space-y-4">
-          <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2.5">
-              Algorithm State
-            </h3>
-
-            {/* Shortest Path State */}
-            {currentStepData?.type === 'shortestPath' && (
-              <div className="space-y-3 text-xs">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Shortest Path:</span>
-                  <div className="p-2 mt-1 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] font-mono text-[11px] font-semibold break-all">
-                    {currentStepData.shortestPath.length > 0 ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                        {currentStepData.shortestPath.join(' → ')}
-                      </span>
-                    ) : currentStepData.isComplete ? (
-                      <span className="text-rose-500 italic">No path exists (Unreachable)</span>
-                    ) : (
-                      <span className="text-slate-400 italic">Searching...</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200/80 dark:border-[#212b4e]">
-                    <span className="text-[10px] text-slate-400 block">Edge Distance</span>
-                    <span className="text-sm font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                      {currentStepData.pathLength !== null ? `${currentStepData.pathLength} edges` : '—'}
+          {/* Bottom BFS Queue & Visited Vertices chips matching Reference Image */}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#17213d]">
+            <div>
+              <span className="text-[10px] text-slate-400 block mb-1 font-medium">BFS Queue</span>
+              <div className="flex flex-wrap gap-1">
+                {(currentStepData && 'queue' in currentStepData ? currentStepData.queue : []).map(
+                  (item: string, idx: number) => (
+                    <span
+                      key={idx}
+                      className="w-6 h-6 flex items-center justify-center rounded-lg bg-[#080d1d] border border-[#1b2648] text-[10px] font-mono font-bold text-slate-200"
+                    >
+                      {item}
                     </span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200/80 dark:border-[#212b4e]">
-                    <span className="text-[10px] text-slate-400 block">Discovered Nodes</span>
-                    <span className="text-sm font-mono font-bold text-slate-700 dark:text-slate-200">
-                      {currentStepData.visited.size} / {graph.vertices.length}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">BFS Queue:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {currentStepData.queue.map((item: string, idx: number) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                    {currentStepData.queue.length === 0 && <span className="text-slate-400 italic">Empty</span>}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* BFS State */}
-            {currentStepData?.type === 'bfs' && (
-              <div className="space-y-3">
-                <div className="text-xs">
-                  <span className="text-slate-500 dark:text-slate-400">FIFO Queue:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {currentStepData.queue.map((item: string, idx: number) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                    {currentStepData.queue.length === 0 && (
-                      <span className="text-xs text-slate-400 italic">Empty</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="text-xs">
-                  <span className="text-slate-500 dark:text-slate-400">Discovered Order:</span>
-                  <div className="space-y-1 mt-1.5 max-h-36 overflow-y-auto">
-                    {Array.from(currentStepData.visited).map((v, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 p-1 rounded-lg bg-slate-50 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] text-xs font-mono"
-                      >
-                        <span className="flex items-center justify-center w-4 h-4 rounded bg-indigo-600 text-white font-bold text-[9px]">
-                          {idx + 1}
-                        </span>
-                        <span className="text-slate-800 dark:text-white font-semibold">{v}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* DFS State */}
-            {currentStepData?.type === 'dfs' && (
-              <div className="space-y-3">
-                <div className="text-xs">
-                  <span className="text-slate-500 dark:text-slate-400">Call Stack:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {currentStepData.stack.map((item: string, idx: number) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                    {currentStepData.stack.length === 0 && (
-                      <span className="text-xs text-slate-400 italic">Empty</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="text-xs">
-                  <span className="text-slate-500 dark:text-slate-400">Discovered Order:</span>
-                  <div className="space-y-1 mt-1.5 max-h-36 overflow-y-auto">
-                    {Array.from(currentStepData.visited).map((v, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 p-1 rounded-lg bg-slate-50 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] text-xs font-mono"
-                      >
-                        <span className="flex items-center justify-center w-4 h-4 rounded bg-indigo-600 text-white font-bold text-[9px]">
-                          {idx + 1}
-                        </span>
-                        <span className="text-slate-800 dark:text-white font-semibold">{v}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Bipartite State */}
-            {currentStepData?.type === 'bipartite' && (
-              <div className="space-y-3 text-xs">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Partition A (Indigo):</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {currentStepData.partitionA.map((v: string) => (
-                      <span key={v} className="px-2 py-0.5 rounded bg-indigo-600 text-white font-mono text-[11px] font-bold">
-                        {v}
-                      </span>
-                    ))}
-                    {currentStepData.partitionA.length === 0 && <span className="text-slate-400 italic">None</span>}
-                  </div>
-                </div>
-
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Partition B (Pink):</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {currentStepData.partitionB.map((v: string) => (
-                      <span key={v} className="px-2 py-0.5 rounded bg-pink-600 text-white font-mono text-[11px] font-bold">
-                        {v}
-                      </span>
-                    ))}
-                    {currentStepData.partitionB.length === 0 && <span className="text-slate-400 italic">None</span>}
-                  </div>
-                </div>
-
-                {currentStepData.oddCycle && (
-                  <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 text-xs">
-                    <strong className="block mb-0.5">Odd-Cycle Conflict:</strong>
-                    <div className="font-mono text-[11px]">{currentStepData.oddCycle.join(' → ')}</div>
-                  </div>
+                  )
+                )}
+                {(!currentStepData ||
+                  !('queue' in currentStepData) ||
+                  currentStepData.queue.length === 0) && (
+                  <span className="text-[10px] text-slate-500 italic py-0.5">Empty</span>
                 )}
               </div>
-            )}
+            </div>
 
-            {/* Graph Coloring State */}
-            {currentStepData?.type === 'coloring' && (
-              <div className="space-y-3 text-xs">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Welsh-Powell Order:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {currentStepData.ordering.map((v: string, idx: number) => {
-                      const isProcessed = idx <= currentStepData.currentIndex;
-                      return (
-                        <span
-                          key={v}
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
-                            isProcessed
-                              ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                          }`}
-                        >
-                          {v}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Color Assignments:</span>
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {Object.entries(currentStepData.assignedColors).map(([v, c]) => {
-                      const hex = COLOR_PALETTE[((c as number) - 1) % COLOR_PALETTE.length];
-                      return (
-                        <span
-                          key={v}
-                          className="px-2 py-0.5 rounded text-white font-mono text-[10px] font-bold shadow-xs"
-                          style={{ backgroundColor: hex }}
-                        >
-                          {v}: C{c as number}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-200 dark:border-[#1e2646]">
-                  <span className="text-slate-500 dark:text-slate-400">Colors Used:</span>
-                  <span className="font-bold text-indigo-600 dark:text-indigo-400 ml-1.5">
-                    {currentStepData.chromaticUpperBound}
-                  </span>
-                </div>
+            <div>
+              <span className="text-[10px] text-slate-400 block mb-1 font-medium">Visited Vertices</span>
+              <div className="flex flex-wrap gap-1">
+                {Array.from(currentStepData && 'visited' in currentStepData ? currentStepData.visited : []).map(
+                  (v, idx) => (
+                    <span
+                      key={idx}
+                      className={`w-6 h-6 flex items-center justify-center rounded-lg text-white font-mono text-[10px] font-bold shadow-xs ${
+                        v === startVertex ? 'bg-[#9333ea]' : 'bg-[#2563eb]'
+                      }`}
+                    >
+                      {v}
+                    </span>
+                  )
+                )}
               </div>
-            )}
+            </div>
+          </div>
+        </div>
 
-            {/* Eulerian State */}
-            {currentStepData?.type === 'eulerian' && (
-              <div className="space-y-3 text-xs">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Hierholzer Stack:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {currentStepData.stack.map((v: string, idx: number) => (
-                      <span key={idx} className="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                        {v}
-                      </span>
-                    ))}
-                    {currentStepData.stack.length === 0 && <span className="text-slate-400 italic">Empty</span>}
-                  </div>
-                </div>
+        {/* Column 3 (span 3): Result Box matching Reference Image */}
+        <div className="lg:col-span-3 p-3.5 rounded-2xl bg-[#0a1024] border border-[#17213d] shadow-xl flex flex-col justify-between">
+          <div>
+            <h3 className="text-xs font-bold text-white tracking-wide mb-2.5">Result</h3>
 
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Constructed Trail:</span>
-                  <div className="p-2 mt-1 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] font-mono text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold break-all">
-                    {currentStepData.eulerianTrail.join(' → ') || 'None yet'}
-                  </div>
-                </div>
+            {/* Path Found Badge */}
+            <div className="flex items-center gap-2 p-2 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-400 text-xs font-bold mb-3">
+              <CheckCircle2 size={15} />
+              <span>
+                {currentStepData && 'isFound' in currentStepData && currentStepData.isFound
+                  ? 'Path Found!'
+                  : currentStepData && 'isComplete' in currentStepData && currentStepData.isComplete
+                  ? 'Execution Finished'
+                  : 'Searching...'}
+              </span>
+            </div>
 
-                <div className="pt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  Edges traversed: <strong>{currentStepData.consumedEdgeIds.size}</strong> / {graph.edges.length}
-                </div>
-              </div>
-            )}
-
-            {/* Bipartite Matching State */}
-            {currentStepData?.type === 'matching' && (
-              <div className="space-y-3 text-xs">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Matched Pairs:</span>
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {currentStepData.matchedPairs.map((pair, idx) => (
+            {/* Shortest Path Chip Flow matching Reference Image */}
+            <div className="mb-3">
+              <span className="text-[10px] text-slate-400 block mb-1 font-medium">Shortest Path:</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {currentStepData && 'shortestPath' in currentStepData && currentStepData.shortestPath.length > 0 ? (
+                  currentStepData.shortestPath.map((node: string, idx: number) => (
+                    <React.Fragment key={idx}>
                       <span
-                        key={idx}
-                        className="px-2 py-0.5 rounded bg-pink-50 dark:bg-pink-950/60 border border-pink-200 dark:border-pink-800 text-pink-600 dark:text-pink-400 font-mono text-[11px] font-bold"
+                        className={`w-6 h-6 flex items-center justify-center rounded-lg font-bold text-xs text-white shadow-xs ${
+                          idx === 0
+                            ? 'bg-[#9333ea]'
+                            : idx === currentStepData.shortestPath.length - 1
+                            ? 'bg-[#2563eb]'
+                            : 'bg-[#0284c7]'
+                        }`}
                       >
-                        ({pair.u}, {pair.v})
+                        {node}
                       </span>
-                    ))}
-                    {currentStepData.matchedPairs.length === 0 && (
-                      <span className="text-slate-400 italic">None yet</span>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400">Unmatched Vertices:</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {currentStepData.unmatchedVertices.map((v) => (
-                      <span key={v} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-mono text-[10px]">
-                        {v}
-                      </span>
-                    ))}
-                    {currentStepData.unmatchedVertices.length === 0 && (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
-                        None (Perfect Matching!)
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-slate-200 dark:border-[#1e2646]">
-                  <span className="text-slate-500 dark:text-slate-400">Matching Cardinality |M*|:</span>
-                  <span className="font-bold text-pink-600 dark:text-pink-400 ml-1.5">
-                    {currentStepData.maxMatchingSize}
-                  </span>
-                </div>
+                      {idx < currentStepData.shortestPath.length - 1 && (
+                        <span className="text-slate-500 font-bold text-xs">→</span>
+                      )}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <span className="text-xs text-slate-500 italic">—</span>
+                )}
               </div>
-            )}
+            </div>
+
+            <div className="text-xs text-slate-400 mb-3">
+              Number of edges:{' '}
+              <span className="font-mono font-bold text-white">
+                {currentStepData && 'pathLength' in currentStepData && currentStepData.pathLength !== null
+                  ? currentStepData.pathLength
+                  : '—'}
+              </span>
+            </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-1.5 transition-colors">
-            <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider">
-              Algorithm Description
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              {selectedAlgo === 'bfs' && 'Explores all neighbors at the current depth before descending deeper.'}
-              {selectedAlgo === 'dfs' && 'Explores as far as possible along each branch before backtracking.'}
-              {selectedAlgo === 'shortestPath' && 'Finds the optimal path with minimum edge count between source and destination using Breadth First Search (BFS).'}
-              {selectedAlgo === 'bipartite' && 'Uses 2-coloring BFS to partition vertices into two independent sets or isolate an odd-cycle witness.'}
-              {selectedAlgo === 'coloring' && 'Welsh–Powell sorts vertices by descending degree and applies greedy coloring to establish an upper bound for χ(G).'}
-              {selectedAlgo === 'eulerian' && "Hierholzer's algorithm traces an Eulerian trail by decomposing the graph into closed edge-disjoint cycles."}
-              {selectedAlgo === 'matching' && "Computes maximum cardinality bipartite matching M* via augmenting path DFS satisfying Berge's Lemma."}
-            </p>
+          {/* Path Details List matching Reference Image */}
+          <div className="pt-2 border-t border-[#17213d]">
+            <span className="text-[10px] text-slate-400 block mb-1 font-medium">Path Details</span>
+            <div className="space-y-1 max-h-24 overflow-y-auto font-mono text-[11px] text-slate-300">
+              {currentStepData && 'shortestPathEdges' in currentStepData && currentStepData.shortestPathEdges.length > 0 ? (
+                currentStepData.shortestPathEdges.map((e, idx) => (
+                  <div key={idx} className="flex items-center justify-between py-0.5 px-1.5 rounded bg-[#080d1d]">
+                    <span>{idx + 1}.</span>
+                    <span>{e.source} → {e.target}</span>
+                  </div>
+                ))
+              ) : (
+                <span className="text-slate-500 italic text-[11px]">No path details yet</span>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,256 +1,348 @@
 // src/pages/GraphLab.tsx
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState } from 'react';
 import { useGraph } from '../context';
-import { examples } from '../data/exampleGraphs';
-import type { ExampleKey } from '../data/exampleGraphs';
-import { verifyTree } from '../algorithms/verifyTree';
-import { detectCycle } from '../algorithms/detectCycle';
-import { connectedComponents } from '../algorithms/connectedComponents';
 import GraphCanvas from '../components/GraphCanvas';
-import GraphInfoPanel from '../components/GraphInfoPanel';
+import AlgorithmsView from '../components/AlgorithmsView';
 import RepresentationsView from '../components/RepresentationsView';
 import AnalysisPanel from '../components/AnalysisPanel';
-import AlgorithmsView from '../components/AlgorithmsView';
+import NavSidebar, { type ActiveNavView } from '../components/NavSidebar';
+import DashboardView from './DashboardView';
+import PresetLibraryView from './PresetLibraryView';
+import Theory from './Theory';
+import type { AlgorithmHighlightState } from '../types/graph';
 import {
   Plus,
-  Share2,
+  Link as LinkIcon,
+  MousePointer,
   Trash2,
-  RotateCcw,
-  RotateCw,
-  ChevronDown,
+  Sparkles,
   Info,
 } from 'lucide-react';
 
-const tabs = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'representations', label: 'Representations' },
-  { id: 'properties', label: 'Properties' },
-  { id: 'algorithms', label: 'Algorithms' },
-];
-
 const GraphLab: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tabFromUrl = searchParams.get('tab') || 'overview';
-  const [activeTab, setActiveTab] = useState(tabFromUrl);
-  const [exampleDropdownOpen, setExampleDropdownOpen] = useState(false);
-
   const {
     graph,
     addVertex,
     addEdge,
     removeVertex,
-    clearGraph,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
     selected,
     clearSelection,
-    setGraph,
   } = useGraph();
 
-  useEffect(() => {
-    setActiveTab(tabFromUrl);
-  }, [tabFromUrl]);
+  const [activeView, setActiveView] = useState<ActiveNavView>('editor');
+  const [activeTool, setActiveTool] = useState<'move' | 'link' | 'select' | 'delete'>('select');
+  const [highlightState, setHighlightState] = useState<AlgorithmHighlightState | null>(null);
 
-  const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
-    if (tabId === 'overview') {
-      setSearchParams({});
-    } else {
-      setSearchParams({ tab: tabId });
-    }
-  };
+  // Inspector & Graph Settings state matching Screen 2
+  const [isDirected, setIsDirected] = useState(false);
+  const [showLabels, setShowLabels] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+  const [edgeWeights, setEdgeWeights] = useState(false);
+
+  const selectedVertex = selected[0] || (graph.vertices.length > 0 ? graph.vertices[0] : null);
+  let degree = 0;
+  const neighbors: string[] = [];
+  if (selectedVertex) {
+    graph.edges.forEach(({ source, target }) => {
+      if (source === selectedVertex) {
+        degree += 1;
+        neighbors.push(target);
+      } else if (target === selectedVertex) {
+        degree += 1;
+        neighbors.push(source);
+      }
+    });
+  }
 
   const handleAddVertex = () => {
+    setActiveTool('select');
     addVertex();
   };
 
   const handleAddEdge = () => {
+    setActiveTool('link');
     if (selected.length !== 2) {
-      alert('Select exactly two vertices to add an edge.');
+      alert('Select exactly two vertices on canvas to establish an edge.');
       return;
     }
     addEdge(selected[0], selected[1]);
     clearSelection();
   };
 
-  const handleDeleteSelected = () => {
+  const handleDelete = () => {
+    setActiveTool('delete');
     if (selected.length === 0) return;
     selected.forEach((id) => removeVertex(id));
     clearSelection();
   };
 
-  const handleLoadExample = (key: ExampleKey) => {
-    if (!examples[key]) return;
-    setGraph({ ...examples[key] });
-    clearSelection();
-    setExampleDropdownOpen(false);
-    setTimeout(() => {
-      (window as any).graphCanvasAutoLayout?.();
-    }, 40);
+  const handleAutoLayout = () => {
+    (window as any).graphCanvasAutoLayout?.();
   };
 
-  const result = verifyTree(graph);
-  const cycle = detectCycle(graph);
-  const components = connectedComponents(graph);
-  const vCount = graph.vertices.length;
-  const eCount = graph.edges.length;
-  const isConnected = components.length <= 1 && vCount > 0;
-  const hasCycle = cycle.length > 0;
-  const isTree = result.isTree;
-
-  const overviewText = `This is an undirected graph with ${vCount} vertices and ${eCount} edges. The graph is ${
-    isConnected ? 'connected' : 'disconnected'
-  } and ${hasCycle ? 'contains cycles' : 'contains no cycles'}, so it is ${
-    isTree ? 'a valid tree' : 'not a tree'
-  }.`;
-
   return (
-    <div className="flex flex-col gap-4 select-none pb-6">
-      {/* Top Header Row (matches Screen 1) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Graph Workspace
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Create, edit and analyze mathematical graphs
-          </p>
-        </div>
+    <div className="flex h-[calc(100vh-60px)] overflow-hidden bg-[#070b18] text-slate-100 select-none">
+      {/* 1. Left Nav Sidebar (matches all 9 reference screens) */}
+      <NavSidebar activeView={activeView} onSelectView={setActiveView} />
 
-        {/* Right Type selector, Example loader & Clear Graph */}
-        <div className="flex flex-wrap items-center gap-2 relative">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-[#141a30] border border-slate-200 dark:border-[#212b4e] text-xs font-medium text-slate-700 dark:text-slate-200 shadow-xs">
-            <span>Undirected Graph</span>
-            <ChevronDown size={14} className="text-slate-400" />
-          </div>
+      {/* 2. Main Content Body */}
+      <div className="flex-1 overflow-y-auto p-3.5 space-y-4">
+        {/* VIEW 1: HOME or DASHBOARD matching Screen 1 */}
+        {(activeView === 'home' || activeView === 'dashboard') && (
+          <DashboardView onNavigate={setActiveView} />
+        )}
 
-          <div className="relative">
-            <button
-              onClick={() => setExampleDropdownOpen(!exampleDropdownOpen)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-[0_0_12px_rgba(99,102,241,0.4)] transition-all cursor-pointer"
-            >
-              <span>Load Example</span>
-              <ChevronDown size={14} />
-            </button>
-
-            {exampleDropdownOpen && (
-              <div className="absolute right-0 top-10 w-48 rounded-xl bg-white dark:bg-[#12182e] border border-slate-200 dark:border-[#1e2646] shadow-2xl py-1.5 z-40">
-                {Object.keys(examples).map((key) => (
+        {/* VIEW 2: GRAPH EDITOR matching Screen 2 */}
+        {activeView === 'editor' && (
+          <div className="space-y-3 max-w-6xl mx-auto">
+            {/* Top Editor Header matching Screen 2 */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[#0c1228] border border-[#172140] shadow-xl">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-white">Graph Editor</span>
+                </div>
+                {/* Undirected / Weighted toggle */}
+                <div className="flex items-center p-0.5 rounded-lg bg-[#080d1e] border border-[#1b2648] text-[11px] font-semibold">
                   <button
-                    key={key}
-                    onClick={() => handleLoadExample(key as ExampleKey)}
-                    className="w-full text-left px-3.5 py-1.5 text-xs text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-[#1b2344] hover:text-indigo-600 dark:hover:text-white transition-colors"
+                    onClick={() => setIsDirected(false)}
+                    className={`px-2.5 py-1 rounded-md transition-all ${
+                      !isDirected ? 'bg-[#5b3bf6] text-white shadow-xs' : 'text-slate-400'
+                    }`}
                   >
-                    {key}
+                    Undirected
                   </button>
-                ))}
+                  <button
+                    onClick={() => setIsDirected(true)}
+                    className={`px-2.5 py-1 rounded-md transition-all ${
+                      isDirected ? 'bg-[#5b3bf6] text-white shadow-xs' : 'text-slate-400'
+                    }`}
+                  >
+                    Weighted
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
 
-          <button
-            onClick={clearGraph}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-[#371924] hover:bg-rose-100 dark:hover:bg-[#481f2f] border border-rose-200 dark:border-[#6b2539] text-rose-600 dark:text-rose-300 text-xs font-medium transition-all"
-            title="Clear current graph"
-          >
-            <Trash2 size={13} />
-            <span>Clear Graph</span>
-          </button>
-        </div>
-      </div>
+              {/* Status Pills: V=6, E=8, Components: 1 */}
+              <div className="flex items-center gap-2 font-mono text-xs">
+                <span className="px-2.5 py-1 rounded-xl bg-[#080d1e] border border-[#1b2648] text-slate-300">
+                  |V| = {graph.vertices.length}
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-[#080d1e] border border-[#1b2648] text-slate-300">
+                  |E| = {graph.edges.length}
+                </span>
+                <span className="px-2.5 py-1 rounded-xl bg-[#080d1e] border border-[#1b2648] text-[#38bdf8] font-semibold">
+                  Components: 1
+                </span>
+              </div>
+            </div>
 
-      {/* Toolbar Row */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={handleAddVertex}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium shadow-[0_0_12px_rgba(99,102,241,0.35)] transition-all"
-        >
-          <Plus size={15} />
-          <span>Add Vertex</span>
-        </button>
+            {/* Central Editor Layout matching Screen 2: Left Toolbar + Canvas + Right Inspector */}
+            <div className="grid gap-3 lg:grid-cols-12 items-start">
+              {/* Left Action Toolbar (span 1) matching Screen 2 */}
+              <div className="lg:col-span-1 flex lg:flex-col gap-1.5 p-1.5 rounded-2xl bg-[#0c1228] border border-[#172140] shadow-xl w-fit">
+                <button
+                  onClick={handleAddVertex}
+                  className="p-2.5 rounded-xl bg-[#080d1e] border border-[#1b2648] text-slate-300 hover:text-white hover:bg-[#152044] transition-all"
+                  title="Add Vertex"
+                >
+                  <Plus size={16} className="text-[#38bdf8]" />
+                </button>
 
-        <button
-          onClick={handleAddEdge}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-[#161d36] hover:bg-slate-50 dark:hover:bg-[#1e274a] border border-slate-200 dark:border-[#212b4e] text-slate-700 dark:text-slate-200 text-xs font-medium shadow-xs transition-all"
-          title="Select 2 vertices and click Add Edge"
-        >
-          <Share2 size={14} />
-          <span>Add Edge</span>
-        </button>
+                <button
+                  onClick={handleAddEdge}
+                  className="p-2.5 rounded-xl bg-[#080d1e] border border-[#1b2648] text-slate-300 hover:text-white hover:bg-[#152044] transition-all"
+                  title="Add Edge (Select 2 vertices)"
+                >
+                  <LinkIcon size={16} className="text-[#38bdf8]" />
+                </button>
 
-        <button
-          onClick={handleDeleteSelected}
-          disabled={selected.length === 0}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-50 dark:bg-[#371924] hover:bg-rose-100 dark:hover:bg-[#481f2f] border border-rose-200 dark:border-[#6b2539] text-rose-600 dark:text-rose-300 disabled:opacity-40 text-xs font-medium transition-all"
-        >
-          <Trash2 size={14} />
-          <span>Delete Selected</span>
-        </button>
+                <button
+                  onClick={() => setActiveTool('select')}
+                  className={`p-2.5 rounded-xl transition-all ${
+                    activeTool === 'select'
+                      ? 'bg-[#5b3bf6] text-white shadow-[0_0_12px_rgba(91,59,246,0.6)]'
+                      : 'bg-[#080d1e] border border-[#1b2648] text-slate-300'
+                  }`}
+                  title="Select / Move"
+                >
+                  <MousePointer size={16} />
+                </button>
 
-        <button
-          onClick={undo}
-          disabled={!canUndo}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-[#161d36] hover:bg-slate-50 dark:hover:bg-[#1e274a] border border-slate-200 dark:border-[#212b4e] text-slate-700 dark:text-slate-200 disabled:opacity-40 text-xs font-medium shadow-xs transition-all"
-        >
-          <RotateCcw size={14} />
-          <span>Undo</span>
-        </button>
+                <button
+                  onClick={handleDelete}
+                  className="p-2.5 rounded-xl bg-[#080d1e] border border-[#1b2648] text-rose-400 hover:bg-rose-950/40 transition-all"
+                  title="Delete Selected"
+                >
+                  <Trash2 size={16} />
+                </button>
 
-        <button
-          onClick={redo}
-          disabled={!canRedo}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white dark:bg-[#161d36] hover:bg-slate-50 dark:hover:bg-[#1e274a] border border-slate-200 dark:border-[#212b4e] text-slate-700 dark:text-slate-200 disabled:opacity-40 text-xs font-medium shadow-xs transition-all"
-        >
-          <RotateCw size={14} />
-          <span>Redo</span>
-        </button>
-      </div>
+                <div className="h-px w-full bg-[#1b2648] my-1 hidden lg:block" />
 
-      {/* Main Graph Canvas & Info Panel Side-by-Side */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
-        <div className="flex-1 w-full min-w-0">
-          <GraphCanvas />
-        </div>
-        <GraphInfoPanel />
-      </div>
+                <button
+                  onClick={handleAutoLayout}
+                  className="p-2.5 rounded-xl bg-[#080d1e] border border-[#1b2648] text-amber-400 hover:bg-amber-950/40 transition-all"
+                  title="Auto Layout"
+                >
+                  <Sparkles size={16} />
+                </button>
+              </div>
 
-      {/* Sub-Tabs: Overview, Representations, Properties, Algorithms */}
-      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] w-fit mt-2 shadow-xs">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => handleTabChange(t.id)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              activeTab === t.id
-                ? 'bg-indigo-600 text-white font-semibold shadow-[0_0_12px_rgba(99,102,241,0.35)]'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+              {/* Center Canvas (span 8) */}
+              <div className="lg:col-span-8 flex flex-col gap-2">
+                <GraphCanvas highlightState={highlightState} />
 
-      {/* Bottom Sub-Tab Content */}
-      <div className="mt-1">
-        {activeTab === 'overview' && (
-          <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-1.5 transition-colors">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-              <Info size={15} className="text-indigo-600 dark:text-indigo-400" />
-              Graph Overview
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{overviewText}</p>
+                {/* Bottom Canvas Control Bar matching Screen 2 */}
+                <div className="flex items-center justify-between p-2 rounded-xl bg-[#0c1228] border border-[#172140] text-xs">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleAutoLayout}
+                      className="px-2.5 py-1 rounded-lg bg-[#080d1e] border border-[#1b2648] text-slate-300 hover:text-white"
+                    >
+                      Fit
+                    </button>
+                    <button
+                      onClick={handleAutoLayout}
+                      className="px-2.5 py-1 rounded-lg bg-[#080d1e] border border-[#1b2648] text-slate-300 hover:text-white"
+                    >
+                      Layout ▾
+                    </button>
+                  </div>
+
+                  {/* Legend matching Screen 2 */}
+                  <div className="flex items-center gap-4 text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#c084fc]" />
+                      <span>Selected</span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#10b981]" />
+                      <span>Visited</span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
+                      <span>Step Path</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Inspector & Settings Panel (span 3) matching Screen 2 */}
+              <div className="lg:col-span-3 flex flex-col gap-3">
+                {/* Inspector Card matching Screen 2 */}
+                <div className="p-3.5 rounded-2xl bg-[#0c1228] border border-[#172140] shadow-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-white tracking-wide">Inspector</h3>
+                    <Info size={14} className="text-slate-500" />
+                  </div>
+
+                  {selectedVertex && (
+                    <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#080d1e] border border-[#182348]">
+                      <div className="w-10 h-10 rounded-full bg-[#c084fc] flex items-center justify-center font-bold text-white text-sm shadow-[0_0_12px_rgba(192,132,252,0.8)]">
+                        {selectedVertex}
+                      </div>
+                      <div className="text-xs">
+                        <div className="font-semibold text-white">Vertex: {selectedVertex}</div>
+                        <div className="text-[11px] text-slate-400">Degree: {degree}</div>
+                        <div className="text-[10px] text-slate-500 truncate max-w-[120px]">
+                          Neighbors: {neighbors.length > 0 ? neighbors.join(', ') : 'None'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Graph Settings Toggle Switches matching Screen 2 */}
+                  <div className="pt-2 border-t border-[#172140] space-y-2">
+                    <h4 className="text-[11px] font-semibold text-slate-400">Graph Settings</h4>
+                    <div className="space-y-1.5 text-xs text-slate-300">
+                      <div className="flex items-center justify-between">
+                        <span>Directed</span>
+                        <button
+                          onClick={() => setIsDirected(!isDirected)}
+                          className={`w-7 h-4 rounded-full p-0.5 transition-colors ${
+                            isDirected ? 'bg-[#5b3bf6]' : 'bg-[#1b264e]'
+                          }`}
+                        >
+                          <div className={`w-3 h-3 rounded-full bg-white transition-transform ${isDirected ? 'translate-x-3' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span>Show Labels</span>
+                        <button
+                          onClick={() => setShowLabels(!showLabels)}
+                          className={`w-7 h-4 rounded-full p-0.5 transition-colors ${
+                            showLabels ? 'bg-[#5b3bf6]' : 'bg-[#1b264e]'
+                          }`}
+                        >
+                          <div className={`w-3 h-3 rounded-full bg-white transition-transform ${showLabels ? 'translate-x-3' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span>Show Grid</span>
+                        <button
+                          onClick={() => setShowGrid(!showGrid)}
+                          className={`w-7 h-4 rounded-full p-0.5 transition-colors ${
+                            showGrid ? 'bg-[#5b3bf6]' : 'bg-[#1b264e]'
+                          }`}
+                        >
+                          <div className={`w-3 h-3 rounded-full bg-white transition-transform ${showGrid ? 'translate-x-3' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span>Edge Weights</span>
+                        <button
+                          onClick={() => setEdgeWeights(!edgeWeights)}
+                          className={`w-7 h-4 rounded-full p-0.5 transition-colors ${
+                            edgeWeights ? 'bg-[#5b3bf6]' : 'bg-[#1b264e]'
+                          }`}
+                        >
+                          <div className={`w-3 h-3 rounded-full bg-white transition-transform ${edgeWeights ? 'translate-x-3' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        {activeTab === 'representations' && <RepresentationsView />}
+        {/* VIEW 3: GRAPH ALGORITHMS matching Screen 3 */}
+        {activeView === 'algorithms' && (
+          <div className="space-y-4 max-w-6xl mx-auto">
+            <div>
+              <h1 className="text-xl font-bold text-white tracking-tight">Graph Algorithms</h1>
+              <p className="text-xs text-slate-400 mt-0.5">Visualize and understand graph algorithms step-by-step</p>
+            </div>
+            <AlgorithmsView onHighlightChange={setHighlightState} />
+          </div>
+        )}
 
-        {activeTab === 'properties' && <AnalysisPanel />}
+        {/* VIEW 4: GRAPH REPRESENTATIONS matching Screen 4 */}
+        {activeView === 'representations' && (
+          <div className="space-y-4 max-w-6xl mx-auto">
+            <RepresentationsView />
+          </div>
+        )}
 
-        {activeTab === 'algorithms' && <AlgorithmsView />}
+        {/* VIEW 5: GRAPH PROPERTIES & ANALYSIS matching Screen 5 */}
+        {activeView === 'properties' && (
+          <div className="space-y-4 max-w-6xl mx-auto">
+            <AnalysisPanel />
+          </div>
+        )}
+
+        {/* VIEW 6: PRESET GRAPHS LIBRARY matching Screen 6 */}
+        {activeView === 'presets' && (
+          <PresetLibraryView onLoadPreset={() => setActiveView('editor')} />
+        )}
+
+        {/* VIEW 7: THEORY & NOTES matching Screen 7 */}
+        {activeView === 'theory' && (
+          <Theory />
+        )}
       </div>
     </div>
   );

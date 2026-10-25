@@ -9,28 +9,27 @@ interface GraphCanvasProps {
   highlightState?: AlgorithmHighlightState | null;
 }
 
-const MOCKUP_COORDS: Record<string, { x: number; y: number }> = {
-  '1': { x: 300, y: 70 },
-  '2': { x: 170, y: 170 },
-  '3': { x: 430, y: 170 },
-  '6': { x: 300, y: 220 },
-  '4': { x: 210, y: 330 },
-  '5': { x: 390, y: 330 },
-  '7': { x: 500, y: 260 },
-  'A1': { x: 180, y: 100 },
-  'A2': { x: 180, y: 200 },
-  'A3': { x: 180, y: 300 },
-  'B1': { x: 420, y: 100 },
-  'B2': { x: 420, y: 200 },
-  'B3': { x: 420, y: 300 },
+// Default layout coordinates matching Reference Image exactly
+const REFERENCE_COORDS: Record<string, { x: number; y: number }> = {
+  'A': { x: 380, y: 70 },
+  'B': { x: 230, y: 180 },
+  'C': { x: 530, y: 180 },
+  'D': { x: 380, y: 250 },
+  'E': { x: 230, y: 360 },
+  'F': { x: 530, y: 360 },
+  // Numeric fallbacks
+  '1': { x: 380, y: 70 },
+  '2': { x: 230, y: 180 },
+  '3': { x: 530, y: 180 },
+  '6': { x: 380, y: 250 },
+  '4': { x: 230, y: 360 },
+  '5': { x: 530, y: 360 },
 };
 
 const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Cytoscape.Core | null>(null);
   const [activeTool, setActiveTool] = useState<'select' | 'pan'>('select');
-  const [zoomLevel, setZoomLevel] = useState<number>(100);
-  const [showGrid, setShowGrid] = useState<boolean>(true);
   const { theme } = useTheme();
 
   const {
@@ -45,9 +44,9 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
     if (!containerRef.current) return;
 
     const isDark = theme === 'dark';
-    const nodeBg = isDark ? '#2a3465' : '#4f46e5';
-    const nodeBorder = isDark ? '#6366f1' : '#4338ca';
-    const edgeColor = isDark ? '#60a5fa' : '#6366f1';
+    const nodeBg = isDark ? '#1e3a8a' : '#2563eb';
+    const nodeBorder = isDark ? '#38bdf8' : '#60a5fa';
+    const edgeColor = isDark ? '#475569' : '#64748b';
 
     cyRef.current = Cytoscape({
       container: containerRef.current,
@@ -63,107 +62,113 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
             'border-width': 2.5,
             'border-color': nodeBorder,
             color: '#ffffff',
-            'font-family': 'system-ui, sans-serif',
+            'font-family': 'system-ui, -apple-system, sans-serif',
             'font-weight': 'bold',
-            'font-size': 14,
+            'font-size': 13,
             'text-valign': 'center',
             'text-halign': 'center',
-            width: 46,
-            height: 46,
+            width: 44,
+            height: 44,
             'overlay-opacity': 0,
             'transition-property': 'background-color, border-color, border-width, width, height',
             'transition-duration': 0.2,
-          },
+          } as any,
         },
         {
           selector: 'edge',
           style: {
-            width: 2.5,
+            width: 2,
             'line-color': edgeColor,
             opacity: 0.85,
-            'curve-style': 'bezier',
+            'curve-style': 'straight',
+            label: 'data(weight)',
+            'font-size': 10,
+            color: '#94a3b8',
+            'text-background-opacity': 0.8,
+            'text-background-color': '#080d1a',
+            'text-background-padding': '2px',
             'overlay-opacity': 0,
             'transition-property': 'line-color, width, opacity',
             'transition-duration': 0.2,
-          },
+          } as any,
         },
         {
           selector: '.selected',
           style: {
-            'border-width': 4,
-            'border-color': '#818cf8',
-            'background-color': '#4338ca',
-            color: '#ffffff',
-          },
-        },
-        {
-          selector: '.visited',
-          style: {
-            'background-color': '#1d4ed8',
-            'border-color': '#60a5fa',
             'border-width': 3.5,
+            'border-color': '#d946ef',
+            'background-color': '#86198f',
             color: '#ffffff',
-          },
+          } as any,
         },
         {
           selector: '.root',
           style: {
-            'background-color': '#059669',
-            'border-color': '#10b981',
-            'border-width': 4,
+            'background-color': '#9333ea',
+            'border-color': '#c084fc',
+            'border-width': 3.5,
             color: '#ffffff',
-          },
+          } as any,
         },
         {
           selector: '.target-node',
           style: {
-            'background-color': '#dc2626',
-            'border-color': '#f87171',
-            'border-width': 4,
+            'background-color': '#2563eb',
+            'border-color': '#38bdf8',
+            'border-width': 3.5,
             color: '#ffffff',
-          },
+          } as any,
+        },
+        {
+          selector: '.visited',
+          style: {
+            'background-color': '#2563eb',
+            'border-color': '#60a5fa',
+            'border-width': 3,
+            color: '#ffffff',
+          } as any,
         },
         {
           selector: '.frontier',
           style: {
-            'background-color': '#d97706',
-            'border-color': '#f59e0b',
+            'background-color': '#0284c7',
+            'border-color': '#38bdf8',
             'border-width': 3.5,
             color: '#ffffff',
-          },
+          } as any,
         },
         {
           selector: '.current-node',
           style: {
-            'border-width': 5,
+            'border-width': 4.5,
             'border-color': '#38bdf8',
             'background-color': '#0284c7',
-            width: 52,
-            height: 52,
-          },
+            width: 48,
+            height: 48,
+          } as any,
         },
         {
           selector: '.path-node',
           style: {
-            'background-color': '#10b981',
-            'border-color': '#34d399',
-            'border-width': 4.5,
+            'background-color': '#2563eb',
+            'border-color': '#38bdf8',
+            'border-width': 4,
             color: '#ffffff',
-          },
+          } as any,
         },
         {
           selector: '.partition-a',
           style: {
-            'background-color': '#4f46e5',
-            'border-color': '#818cf8',
+            'background-color': '#9333ea',
+            'border-color': '#c084fc',
             'border-width': 3.5,
           },
         },
         {
           selector: '.partition-b',
           style: {
-            'background-color': '#db2777',
-            'border-color': '#f472b6',
+            'background-color': '#0284c7',
+            'border-color': '#38bdf8',
             'border-width': 3.5,
           },
         },
@@ -177,7 +182,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
         {
           selector: '.active-edge',
           style: {
-            width: 4,
+            width: 3.5,
             'line-color': '#818cf8',
             opacity: 1,
           },
@@ -185,7 +190,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
         {
           selector: '.conflicting-edge',
           style: {
-            width: 5,
+            width: 4.5,
             'line-color': '#ef4444',
             opacity: 1,
           },
@@ -193,15 +198,15 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
         {
           selector: '.traversed-edge',
           style: {
-            width: 4.5,
-            'line-color': '#10b981',
+            width: 3.5,
+            'line-color': '#38bdf8',
             opacity: 1,
           },
         },
         {
           selector: '.matched-edge',
           style: {
-            width: 5.5,
+            width: 4.5,
             'line-color': '#ec4899',
             opacity: 1,
           },
@@ -209,7 +214,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
         {
           selector: '.explored-edge',
           style: {
-            width: 3.5,
+            width: 3,
             'line-color': '#38bdf8',
             opacity: 0.9,
           },
@@ -217,8 +222,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
         {
           selector: '.path-edge',
           style: {
-            width: 6,
-            'line-color': '#10b981',
+            width: 4.5,
+            'line-color': '#38bdf8',
             opacity: 1,
             'z-index': 10,
           },
@@ -269,7 +274,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
 
     // Zoom listener
     cy.on('zoom', () => {
-      setZoomLevel(Math.round(cy.zoom() * 100));
+      // zoom tracked internally
     });
 
     return () => {
@@ -284,16 +289,16 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
     if (!cy) return;
 
     const isDark = theme === 'dark';
-    const defaultNodeBg = isDark ? '#2a3465' : '#4f46e5';
-    const defaultNodeBorder = isDark ? '#6366f1' : '#4338ca';
+    const defaultNodeBg = isDark ? '#1e3a8a' : '#2563eb';
+    const defaultNodeBorder = isDark ? '#38bdf8' : '#60a5fa';
 
     const currentNodeIds = new Set(cy.nodes().map((n) => n.id()));
     const graphNodeIds = new Set(graph.vertices);
 
     graph.vertices.forEach((v, index) => {
       if (!currentNodeIds.has(v)) {
-        const presetPos = MOCKUP_COORDS[v];
-        const defaultX = presetPos ? presetPos.x : 200 + (index % 4) * 80;
+        const presetPos = REFERENCE_COORDS[v];
+        const defaultX = presetPos ? presetPos.x : 200 + (index % 4) * 90;
         const defaultY = presetPos ? presetPos.y : 150 + Math.floor(index / 4) * 90;
 
         cy.add({
@@ -343,7 +348,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
       cy.$(`node#${id}`).addClass('selected');
     });
 
-    // 1. Check highlightState prop
+    // Check highlightState prop
     if (highlightState) {
       if (highlightState.rootNode) {
         cy.$(`node#${highlightState.rootNode}`).addClass('root');
@@ -380,7 +385,13 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
       }
       if (highlightState.pathNodes) {
         highlightState.pathNodes.forEach((id) => {
-          cy.$(`node#${id}`).addClass('path-node');
+          if (id === highlightState.rootNode) {
+            cy.$(`node#${id}`).addClass('root');
+          } else if (id === highlightState.targetNode) {
+            cy.$(`node#${id}`).addClass('target-node');
+          } else {
+            cy.$(`node#${id}`).addClass('path-node');
+          }
         });
       }
 
@@ -429,21 +440,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
           cy.$(`edge#${eid}`).addClass('matched-edge');
         });
       }
-    } else {
-      // Legacy window fallbacks
-      const bfsVisited = (window as any).bfsVisited as string[] | undefined;
-      const bfsFrontier = (window as any).bfsFrontier as string[] | undefined;
-      if (bfsVisited && bfsVisited.length > 0) {
-        cy.$(`node#${bfsVisited[0]}`).addClass('root');
-        bfsVisited.slice(1).forEach((id) => {
-          cy.$(`node#${id}`).addClass('visited');
-        });
-      }
-      if (bfsFrontier) {
-        bfsFrontier.forEach((id) => {
-          cy.$(`node#${id}`).addClass('frontier');
-        });
-      }
     }
 
     if (selected.length === 2) {
@@ -470,7 +466,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
   const handleFit = () => {
     const cy = cyRef.current;
     if (!cy) return;
-    cy.fit(undefined, 50);
+    cy.fit(undefined, 40);
   };
 
   const handleAutoLayout = () => {
@@ -479,127 +475,83 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
     cy.layout({
       name: 'cose',
       animate: true,
-      animationDuration: 500,
-      nodeRepulsion: () => 5000,
-      idealEdgeLength: () => 100,
+      animationDuration: 400,
+      nodeRepulsion: () => 6000,
+      idealEdgeLength: () => 110,
       padding: 40,
     } as any).run();
   };
 
   (window as any).graphCanvasAutoLayout = handleAutoLayout;
 
-  const isDark = theme === 'dark';
-
   return (
-    <div className={`relative w-full h-[450px] rounded-2xl overflow-hidden border ${
-      isDark ? 'border-[#1e2646] bg-[#0c101d]' : 'border-slate-200 bg-white'
-    } shadow-xl flex flex-col select-none transition-colors`}>
-      {/* Floating Left Toolbar */}
-      <div className={`absolute top-4 left-4 z-10 flex flex-col gap-1.5 p-1 rounded-xl ${
-        isDark ? 'bg-[#141a30]/90 border border-[#212b4e]' : 'bg-white/95 border border-slate-200'
-      } shadow-lg backdrop-blur-sm`}>
+    <div className="relative w-full h-[400px] lg:h-[420px] rounded-2xl overflow-hidden border border-[#16213e] bg-[#070d1d] shadow-2xl flex flex-col select-none transition-colors">
+      {/* Top Left Floating Canvas Toolbar matching Reference Image */}
+      <div className="absolute top-3.5 left-3.5 z-10 flex items-center gap-1.5 p-1 rounded-xl bg-[#0e162f]/90 border border-[#1d2b52] shadow-lg backdrop-blur-md">
         <button
           onClick={() => setActiveTool('select')}
-          className={`p-2 rounded-lg transition-colors ${
+          className={`p-1.5 rounded-lg transition-all ${
             activeTool === 'select'
-              ? 'bg-indigo-600 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]'
-              : 'text-slate-400 hover:text-slate-800 dark:hover:text-white'
+              ? 'bg-[#3b82f6] text-white shadow-[0_0_10px_rgba(59,130,246,0.6)]'
+              : 'text-slate-400 hover:text-white'
           }`}
           title="Select & Move"
         >
-          <MousePointer size={15} />
+          <MousePointer size={14} />
         </button>
 
         <button
           onClick={() => setActiveTool('pan')}
-          className={`p-2 rounded-lg transition-colors ${
+          className={`p-1.5 rounded-lg transition-all ${
             activeTool === 'pan'
-              ? 'bg-indigo-600 text-white shadow-[0_0_10px_rgba(99,102,241,0.5)]'
-              : 'text-slate-400 hover:text-slate-800 dark:hover:text-white'
+              ? 'bg-[#3b82f6] text-white shadow-[0_0_10px_rgba(59,130,246,0.6)]'
+              : 'text-slate-400 hover:text-white'
           }`}
           title="Pan View"
         >
-          <Hand size={15} />
+          <Hand size={14} />
         </button>
 
         <button
           onClick={handleZoomIn}
-          className="p-2 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
           title="Zoom In"
         >
-          <ZoomIn size={15} />
+          <ZoomIn size={14} />
         </button>
 
         <button
           onClick={handleZoomOut}
-          className="p-2 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
           title="Zoom Out"
         >
-          <ZoomOut size={15} />
+          <ZoomOut size={14} />
         </button>
 
         <button
           onClick={handleFit}
-          className="p-2 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
           title="Fit Canvas"
         >
-          <Maximize2 size={15} />
+          <Maximize2 size={14} />
         </button>
       </div>
 
-      {/* Main Cytoscape Container */}
-      <div
-        ref={containerRef}
-        className={`w-full h-full cursor-crosshair ${
-          showGrid ? (isDark ? 'canvas-grid-dark' : 'canvas-grid-light') : ''
-        }`}
-      />
-
-      {/* Bottom Zoom & Grid Bar */}
-      <div className={`absolute bottom-3.5 left-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-xl ${
-        isDark ? 'bg-[#141a30]/90 border border-[#212b4e]' : 'bg-white/95 border border-slate-200'
-      } text-xs shadow-lg backdrop-blur-sm`}>
-        <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-          Zoom: {zoomLevel}%
-        </span>
-        <button
-          onClick={handleZoomOut}
-          className="w-5 h-5 flex items-center justify-center rounded bg-slate-200 dark:bg-[#1f284d] text-slate-700 dark:text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors font-bold"
-        >
-          -
-        </button>
-        <button
-          onClick={handleZoomIn}
-          className="w-5 h-5 flex items-center justify-center rounded bg-slate-200 dark:bg-[#1f284d] text-slate-700 dark:text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors font-bold"
-        >
-          +
-        </button>
-        <button
-          onClick={handleFit}
-          className="px-2 py-0.5 rounded bg-slate-200 dark:bg-[#1f284d] text-slate-700 dark:text-slate-300 hover:bg-indigo-600 hover:text-white transition-colors text-[10px] font-semibold"
-        >
-          Fit
-        </button>
-        <div className="h-3 w-px bg-slate-300 dark:bg-slate-700 mx-1" />
-        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-500 dark:text-slate-400">
-          <span>Grid</span>
-          <input
-            type="checkbox"
-            checked={showGrid}
-            onChange={(e) => setShowGrid(e.target.checked)}
-            className="accent-indigo-600 rounded cursor-pointer"
-          />
-        </label>
-      </div>
-
-      {/* Bottom-right Mini-Map Badge */}
-      <div className={`absolute bottom-3.5 right-4 p-2.5 rounded-xl ${
-        isDark ? 'bg-[#131930]/90 border border-[#212b4e]' : 'bg-white/95 border border-slate-200'
-      } shadow-lg backdrop-blur-sm pointer-events-none`}>
-        <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-500/30">
-          <Network size={15} className="text-indigo-600 dark:text-indigo-400" />
+      {/* Top Right Mini-Map Box matching Reference Image */}
+      <div className="absolute top-3.5 right-3.5 z-10 w-24 h-20 rounded-xl bg-[#0c132a]/90 border border-[#1d2b52] shadow-xl backdrop-blur-md p-2 flex items-center justify-center pointer-events-none">
+        <div className="relative w-full h-full flex items-center justify-center">
+          <Network size={36} className="text-[#3b82f6]/40" />
+          <div className="absolute top-1 left-2 w-2 h-2 rounded-full bg-[#c084fc] shadow-[0_0_6px_rgba(192,132,252,0.8)]" />
+          <div className="absolute bottom-2 right-3 w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
+          <div className="absolute top-3 right-2 w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
         </div>
       </div>
+
+      {/* Main Cytoscape Canvas Container */}
+      <div
+        ref={containerRef}
+        className="w-full h-full cursor-crosshair canvas-grid-dark"
+      />
     </div>
   );
 };

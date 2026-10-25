@@ -4,26 +4,37 @@ import { useGraph } from '../context';
 import { verifyTree } from '../algorithms/verifyTree';
 import { detectCycle } from '../algorithms/detectCycle';
 import { connectedComponents } from '../algorithms/connectedComponents';
-import { examples, type ExampleKey } from '../data/exampleGraphs';
-import { FlaskConical, Atom, Layers, AlertCircle, XCircle, CheckCircle2, Bookmark } from 'lucide-react';
-
-const PRESETS: Array<{ key: ExampleKey; label: string }> = [
-  { key: 'wheel6', label: 'Wheel (W6)' },
-  { key: 'k33Bipartite', label: 'Bipartite (K3,3)' },
-  { key: 'eulerianEnvelope', label: 'Eulerian Envelope' },
-  { key: 'petersen', label: 'Petersen Graph' },
-  { key: 'validTree', label: 'Tree' },
-  { key: 'cycleGraph', label: 'Triangle Cycle' },
-];
+import { checkBipartite } from '../algorithms/bipartite';
+import { checkEulerian } from '../algorithms/eulerian';
+import { greedyColoring } from '../algorithms/graphColoring';
+import { bipartiteMatching } from '../algorithms/bipartiteMatching';
+import {
+  Info,
+  Network,
+  Share2,
+  CheckCircle2,
+  XCircle,
+  Palette,
+  Link as LinkIcon,
+} from 'lucide-react';
 
 const GraphInfoPanel: React.FC = () => {
-  const { graph, setGraph, selected } = useGraph();
-  const result = verifyTree(graph);
+  const { graph, selected } = useGraph();
+  const treeResult = verifyTree(graph);
   const components = connectedComponents(graph);
   const cycle = detectCycle(graph);
-  const hasCycle = cycle.length > 0;
-  const isTree = result.isTree;
+  const bipResult = checkBipartite(graph);
+  const eulerResult = checkEulerian(graph);
+  const colorResult = greedyColoring(graph);
+  const matchResult = bipartiteMatching(graph);
 
+  const vCount = graph.vertices.length;
+  const eCount = graph.edges.length;
+  const hasCycle = cycle.length > 0;
+  const isTree = treeResult.isTree;
+  const isConnected = components.length <= 1 && vCount > 0;
+
+  // Selected element inspection
   const selectedVertex = selected[0] || (graph.vertices.length > 0 ? graph.vertices[0] : null);
   let degree = 0;
   const neighbors: string[] = [];
@@ -40,155 +51,157 @@ const GraphInfoPanel: React.FC = () => {
     });
   }
 
-  const loadPreset = (key: ExampleKey) => {
-    if (examples[key]) {
-      setGraph({ ...examples[key] });
-      setTimeout(() => {
-        if ((window as any).graphCanvasAutoLayout) {
-          (window as any).graphCanvasAutoLayout();
-        }
-      }, 50);
-    }
-  };
-
   return (
-    <div className="w-full lg:w-72 flex flex-col gap-4 select-none">
-      {/* Preset Library Card */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2.5 flex items-center gap-1.5">
-          <Bookmark size={15} className="text-indigo-500" />
-          Preset Graph Library
-        </h3>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2.5">
-          Load standard Discrete Mathematics graphs with one click:
-        </p>
-        <div className="grid grid-cols-2 gap-1.5">
-          {PRESETS.map((preset) => (
-            <button
-              key={preset.key}
-              onClick={() => loadPreset(preset.key)}
-              className="px-2.5 py-1.5 text-[11px] font-medium rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200 dark:border-[#212b4e] text-slate-700 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-400 dark:hover:border-indigo-800/40 transition-all text-left truncate"
-            >
-              {preset.label}
-            </button>
-          ))}
+    <div className="w-full lg:w-72 flex flex-col gap-3 select-none text-slate-200">
+      {/* Top Header Card: Vertices & Edges */}
+      <div className="p-3.5 rounded-2xl bg-[#0c1226] border border-[#17213d] shadow-xl">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="p-1 rounded-lg bg-[#3b82f6]/20 text-[#38bdf8]">
+            <Info size={14} />
+          </div>
+          <h3 className="text-xs font-bold text-white tracking-wide">Graph Information</h3>
+        </div>
+
+        {/* Vertices & Edges 2-Column Banner */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Vertices Count */}
+          <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#080d1d] border border-[#16203a]">
+            <div className="p-1.5 rounded-lg bg-[#3b82f6]/20 text-[#38bdf8]">
+              <Network size={16} />
+            </div>
+            <div>
+              <div className="text-[10px] text-slate-400 font-medium">Vertices</div>
+              <div className="text-base font-bold text-white leading-tight">{vCount}</div>
+            </div>
+          </div>
+
+          {/* Edges Count */}
+          <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#080d1d] border border-[#16203a]">
+            <div className="p-1.5 rounded-lg bg-[#3b82f6]/20 text-[#38bdf8]">
+              <Share2 size={16} />
+            </div>
+            <div>
+              <div className="text-[10px] text-slate-400 font-medium">Edges</div>
+              <div className="text-base font-bold text-white leading-tight">{eCount}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Graph Properties Compact List matching Reference Image */}
+        <div className="mt-3.5 pt-3 border-t border-[#16213c]">
+          <h4 className="text-[11px] font-semibold text-slate-400 mb-2">Graph Properties</h4>
+          <div className="space-y-1.5 text-xs">
+            {/* Connected */}
+            <div className="flex items-center justify-between py-0.5">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                {isConnected ? (
+                  <CheckCircle2 size={13} className="text-emerald-400" />
+                ) : (
+                  <XCircle size={13} className="text-rose-400" />
+                )}
+                <span>Connected</span>
+              </span>
+              <span className={`text-[11px] font-medium ${isConnected ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {isConnected ? `Yes (${components.length} component)` : 'No (Disconnected)'}
+              </span>
+            </div>
+
+            {/* Tree */}
+            <div className="flex items-center justify-between py-0.5">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                {isTree ? (
+                  <CheckCircle2 size={13} className="text-emerald-400" />
+                ) : (
+                  <XCircle size={13} className="text-rose-400" />
+                )}
+                <span>Tree</span>
+              </span>
+              <span className={`text-[11px] font-medium ${isTree ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {isTree ? 'Yes' : hasCycle ? 'No (contains cycles)' : 'No'}
+              </span>
+            </div>
+
+            {/* Bipartite */}
+            <div className="flex items-center justify-between py-0.5">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                {bipResult.isBipartite ? (
+                  <CheckCircle2 size={13} className="text-emerald-400" />
+                ) : (
+                  <XCircle size={13} className="text-rose-400" />
+                )}
+                <span>Bipartite</span>
+              </span>
+              <span className={`text-[11px] font-medium ${bipResult.isBipartite ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {bipResult.isBipartite ? 'Yes' : 'No (odd cycle)'}
+              </span>
+            </div>
+
+            {/* Eulerian Path */}
+            <div className="flex items-center justify-between py-0.5">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                {eulerResult.hasEulerianPath ? (
+                  <CheckCircle2 size={13} className="text-emerald-400" />
+                ) : (
+                  <XCircle size={13} className="text-rose-400" />
+                )}
+                <span>Eulerian Path</span>
+              </span>
+              <span className={`text-[11px] font-medium ${eulerResult.hasEulerianPath ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {eulerResult.hasEulerianPath ? 'Yes' : 'No'}
+              </span>
+            </div>
+
+            {/* Eulerian Circuit */}
+            <div className="flex items-center justify-between py-0.5">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                {eulerResult.hasEulerianCircuit ? (
+                  <CheckCircle2 size={13} className="text-emerald-400" />
+                ) : (
+                  <XCircle size={13} className="text-rose-400" />
+                )}
+                <span>Eulerian Circuit</span>
+              </span>
+              <span className={`text-[11px] font-medium ${eulerResult.hasEulerianCircuit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {eulerResult.hasEulerianCircuit ? 'Yes' : 'No'}
+              </span>
+            </div>
+
+            {/* Chromatic Number */}
+            <div className="flex items-center justify-between py-0.5">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <Palette size={13} className="text-amber-400" />
+                <span>Chromatic Number</span>
+              </span>
+              <span className="text-[11px] font-mono text-slate-300 font-semibold">
+                χ(G) = {colorResult.chromaticNumber}
+              </span>
+            </div>
+
+            {/* Maximum Matching */}
+            <div className="flex items-center justify-between py-0.5">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <LinkIcon size={13} className="text-[#38bdf8]" />
+                <span>Maximum Matching</span>
+              </span>
+              <span className="text-[11px] font-mono text-slate-300 font-semibold">
+                |M*| = {matchResult.maxMatchingSize}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Graph Information Card */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Graph Information</h3>
-
-        {/* Vertices & Edges Row */}
-        <div className="grid grid-cols-2 gap-2.5 mb-3">
-          <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200/80 dark:border-[#212b4e]">
-            <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <FlaskConical size={18} />
-            </div>
-            <div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">Vertices</div>
-              <div className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                {graph.vertices.length}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200/80 dark:border-[#212b4e]">
-            <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400">
-              <Atom size={18} />
-            </div>
-            <div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">Edges</div>
-              <div className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                {graph.edges.length}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Connected Components */}
-        <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200/80 dark:border-[#212b4e] mb-3">
-          <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            <Layers size={18} />
-          </div>
-          <div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400">Connected Components</div>
-            <div className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-              {components.length}
-            </div>
-          </div>
-        </div>
-
-        {/* Cycle & Tree Row */}
-        <div className="grid grid-cols-2 gap-2.5">
-          <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200/80 dark:border-[#212b4e]">
-            <div
-              className={`p-2 rounded-lg ${
-                hasCycle
-                  ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                  : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-              }`}
-            >
-              {hasCycle ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
-            </div>
-            <div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">Contains Cycle</div>
-              <div
-                className={`text-sm font-bold leading-tight ${
-                  hasCycle ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
-                }`}
-              >
-                {hasCycle ? 'Yes' : 'No'}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-[#161d36] border border-slate-200/80 dark:border-[#212b4e]">
-            <div
-              className={`p-2 rounded-lg ${
-                isTree
-                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'
-              }`}
-            >
-              {isTree ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
-            </div>
-            <div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400">Is Tree</div>
-              <div
-                className={`text-sm font-bold leading-tight ${
-                  isTree ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                }`}
-              >
-                {isTree ? 'Yes' : 'No'}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Selected Vertex Card */}
+      {/* Selected Element Card matching Reference Image */}
       {selectedVertex && (
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Selected Vertex</h3>
-
+        <div className="p-3.5 rounded-2xl bg-[#0c1226] border border-[#17213d] shadow-xl">
+          <h4 className="text-[11px] font-semibold text-slate-400 mb-2">Selected Element</h4>
           <div className="flex items-center gap-3">
-            {/* Big Circular Badge */}
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-600 text-white font-bold text-lg shadow-[0_0_15px_rgba(99,102,241,0.5)]">
-              {selectedVertex}
-            </div>
-
-            {/* Details */}
-            <div className="space-y-0.5 text-xs">
-              <div className="text-slate-700 dark:text-slate-300 font-medium">
-                <span className="text-slate-400 dark:text-slate-500">Vertex:</span> {selectedVertex}
-              </div>
-              <div className="text-slate-700 dark:text-slate-300 font-medium">
-                <span className="text-slate-400 dark:text-slate-500">Degree:</span> {degree}
-              </div>
-              <div className="text-slate-700 dark:text-slate-300 font-medium">
-                <span className="text-slate-400 dark:text-slate-500">Neighbors:</span>{' '}
-                {neighbors.length > 0 ? neighbors.join(', ') : 'None'}
+            <div className="w-5 h-5 rounded-full bg-[#c084fc] shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
+            <div className="text-xs">
+              <span className="font-semibold text-white">Vertex: {selectedVertex}</span>
+              <div className="flex items-center gap-4 text-slate-400 text-[11px] mt-0.5">
+                <span>Degree: {degree}</span>
+                <span>Adjacent: {neighbors.length > 0 ? neighbors.join(', ') : 'None'}</span>
               </div>
             </div>
           </div>

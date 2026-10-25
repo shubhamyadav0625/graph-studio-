@@ -2,21 +2,22 @@
 import type { Graph } from '../types/graph';
 
 export const examples: Record<string, Graph> = {
-  // Mockup Graph: 6 vertices, 8 edges (as shown in Graph Studio workspace)
+  // Reference Image Wheel (W6): 6 vertices A, B, C, D, E, F with 9 edges
   wheel6: {
-    vertices: ['1', '2', '3', '4', '5', '6'],
+    vertices: ['A', 'B', 'C', 'D', 'E', 'F'],
     edges: [
-      { source: '1', target: '2' },
-      { source: '1', target: '3' },
-      { source: '1', target: '6' },
-      { source: '2', target: '4' },
-      { source: '2', target: '6' },
-      { source: '3', target: '5' },
-      { source: '3', target: '6' },
-      { source: '4', target: '5' },
+      { source: 'A', target: 'B' },
+      { source: 'A', target: 'C' },
+      { source: 'A', target: 'D' },
+      { source: 'B', target: 'D' },
+      { source: 'B', target: 'E' },
+      { source: 'C', target: 'D' },
+      { source: 'C', target: 'F' },
+      { source: 'D', target: 'E' },
+      { source: 'D', target: 'F' },
     ],
   },
-  // Bipartite Matching Demo: K3,3 Complete Bipartite Graph
+  // Complete Bipartite (K3,3)
   k33Bipartite: {
     vertices: ['A1', 'A2', 'A3', 'B1', 'B2', 'B3'],
     edges: [
@@ -31,7 +32,7 @@ export const examples: Record<string, Graph> = {
       { source: 'A3', target: 'B3' },
     ],
   },
-  // Eulerian Envelope Graph (House with roof)
+  // House with roof (Eulerian envelope)
   eulerianEnvelope: {
     vertices: ['1', '2', '3', '4', '5'],
     edges: [
@@ -66,39 +67,22 @@ export const examples: Record<string, Graph> = {
       { source: '8', target: '5' },
     ],
   },
-  // Valid tree (a simple three‑node tree)
+  // Valid tree
   validTree: {
-    vertices: ['v1', 'v2', 'v3'],
-    edges: [
-      { source: 'v1', target: 'v2' },
-      { source: 'v1', target: 'v3' },
-    ],
-  },
-  // Graph containing a cycle (triangle)
-  cycleGraph: {
-    vertices: ['v1', 'v2', 'v3'],
-    edges: [
-      { source: 'v1', target: 'v2' },
-      { source: 'v2', target: 'v3' },
-      { source: 'v3', target: 'v1' },
-    ],
-  },
-  // Disconnected graph (two components)
-  disconnected: {
     vertices: ['v1', 'v2', 'v3', 'v4'],
     edges: [
       { source: 'v1', target: 'v2' },
-      { source: 'v3', target: 'v4' },
+      { source: 'v1', target: 'v3' },
+      { source: 'v2', target: 'v4' },
     ],
   },
-  // Star tree (center v1 connected to four leaves)
-  starTree: {
-    vertices: ['v1', 'v2', 'v3', 'v4', 'v5'],
+  // Triangle Cycle (C3)
+  cycleGraph: {
+    vertices: ['1', '2', '3'],
     edges: [
-      { source: 'v1', target: 'v2' },
-      { source: 'v1', target: 'v3' },
-      { source: 'v1', target: 'v4' },
-      { source: 'v1', target: 'v5' },
+      { source: '1', target: '2' },
+      { source: '2', target: '3' },
+      { source: '3', target: '1' },
     ],
   },
 };

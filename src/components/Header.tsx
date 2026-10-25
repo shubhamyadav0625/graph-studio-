@@ -1,79 +1,74 @@
 // src/components/Header.tsx
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Zap, Search, Moon, Sun, Bell, Menu } from 'lucide-react';
+import { Network, Search, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../context';
 
 interface HeaderProps {
   onToggleSidebar?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
+const Header: React.FC<HeaderProps> = () => {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="flex items-center justify-between px-5 py-3 bg-white dark:bg-[#0c101d] border-b border-slate-200 dark:border-[#1b223c] text-slate-800 dark:text-white select-none z-30 transition-colors">
-      {/* Brand logo & mobile hamburger */}
-      <div className="flex items-center space-x-3">
-        <button
-          onClick={onToggleSidebar}
-          className="md:hidden p-1.5 rounded-lg bg-slate-100 dark:bg-[#141a30] border border-slate-200 dark:border-[#212b4e] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-          aria-label="Toggle navigation"
-        >
-          <Menu size={18} />
-        </button>
-
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-600 shadow-[0_0_12px_rgba(99,102,241,0.5)]">
-            <Zap size={16} className="text-white fill-white" />
+    <header className="flex items-center justify-between px-5 py-2.5 bg-[#0a0e24] border-b border-[#141b38] text-white select-none z-30 transition-colors">
+      {/* Brand logo & tagline matching reference image */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-[#3b82f6] to-[#a855f7] shadow-[0_0_15px_rgba(168,85,247,0.5)]">
+            <Network size={18} className="text-white" />
           </div>
-          <span className="font-bold text-lg tracking-tight text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-            Graph Studio
-          </span>
-        </Link>
-      </div>
-
-      {/* Center Search Input with Ctrl K (matches updated mockup) */}
-      <div className="hidden sm:flex items-center justify-between w-72 lg:w-96 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-[#13192f] border border-slate-200 dark:border-[#212b4e] text-slate-500 dark:text-slate-400 text-xs focus-within:border-indigo-500 transition-colors">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <Search size={14} className="text-slate-400 flex-shrink-0" />
-          <input
-            type="text"
-            placeholder="Search topics, algorithms..."
-            className="bg-transparent border-none outline-none w-full text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 text-xs"
-          />
+          <div>
+            <div className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5 leading-none">
+              Graph Studio
+            </div>
+            <div className="text-[10px] text-slate-400 font-normal leading-tight mt-0.5 tracking-tight">
+              Graph Theory Learning Lab
+            </div>
+          </div>
         </div>
-        <kbd className="hidden md:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-slate-400 dark:text-slate-400 bg-white dark:bg-[#1a223f] border border-slate-200 dark:border-[#26325a] rounded shadow-xs">
-          Ctrl K
-        </kbd>
       </div>
 
-      {/* Right Controls: Theme Toggle, Notifications, Avatar */}
-      <div className="flex items-center space-x-2.5">
-        {/* Working Light/Dark Theme Switcher */}
+      {/* Center Search Bar matching reference image */}
+      <div className="hidden sm:flex items-center gap-2 w-80 lg:w-96 px-3 py-1.5 rounded-full bg-[#0e1430] border border-[#1b254b] text-slate-400 text-xs focus-within:border-[#5b3bf6] transition-colors">
+        <Search size={14} className="text-slate-400 flex-shrink-0" />
+        <input
+          type="text"
+          placeholder="Search algorithms, topics, or graphs..."
+          className="bg-transparent border-none outline-none w-full text-slate-200 placeholder-slate-500 text-xs"
+        />
+      </div>
+
+      {/* Right Controls: GitHub icon, Theme toggle & user avatar S */}
+      <div className="flex items-center space-x-3">
+        <a
+          href="https://github.com/shubhamyadav0625/graph-studio-"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-colors"
+          title="GitHub Repository"
+        >
+          <svg className="w-[17px] h-[17px] fill-current" viewBox="0 0 24 24">
+            <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+          </svg>
+        </a>
+
+        {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-[#151c35] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-all"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-all"
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           aria-label="Toggle dark/light theme"
         >
           {theme === 'dark' ? (
-            <Sun size={17} className="text-amber-400 hover:rotate-45 transition-transform" />
+            <Sun size={17} className="text-amber-400" />
           ) : (
-            <Moon size={17} className="text-indigo-600 hover:-rotate-12 transition-transform" />
+            <Moon size={17} className="text-indigo-400" />
           )}
         </button>
 
-        <button
-          className="relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-[#151c35] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
-          title="Notifications"
-        >
-          <Bell size={16} />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500" />
-        </button>
-
-        {/* User avatar S */}
-        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-600 text-white font-bold text-xs shadow-[0_0_10px_rgba(99,102,241,0.4)] cursor-pointer">
+        {/* User avatar S matching reference image */}
+        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-[#5b3bf6] text-white font-bold text-xs shadow-[0_0_12px_rgba(91,59,246,0.6)] cursor-pointer">
           S
         </div>
       </div>
