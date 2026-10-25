@@ -133,8 +133,8 @@ const RepresentationsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 2 (span 2.5): Adjacency List Table */}
-        <div className="lg:col-span-2.5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
+        {/* Card 2 (span 2): Adjacency List Table */}
+        <div className="lg:col-span-2 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
           <div>
             <h3 className="text-xs font-bold text-white mb-2.5">Adjacency List</h3>
             <div className="grid grid-cols-12 text-[10px] font-bold text-slate-400 border-b border-[#141b38] pb-1 mb-1.5">
@@ -200,8 +200,8 @@ const RepresentationsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 4 (span 3): Incidence Matrix (6 x 8) */}
-        <div className="lg:col-span-3 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between overflow-x-auto">
+        {/* Card 4 (span 3.5): Incidence Matrix (6 x 8) */}
+        <div className="lg:col-span-3.5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between overflow-x-auto">
           <div>
             <h3 className="text-xs font-bold text-white mb-2.5">
               Incidence Matrix ({vCount} × {eCount})

@@ -168,9 +168,9 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
       </div>
 
       {/* Main 3-Column Visualizer Layout matching Reference Screenshot */}
-      <div className="grid gap-3.5 lg:grid-cols-12 items-stretch">
-        {/* Column 1 (span 3.5): BFS Info, Complexity & Configuration */}
-        <div className="lg:col-span-3.5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
+        {/* Column 1 (span 3): BFS Info, Complexity & Configuration */}
+        <div className="lg:col-span-3 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between space-y-4">
           <div className="space-y-3">
             <div>
               <h3 className="text-sm font-bold text-white tracking-wide">
@@ -253,8 +253,8 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
           </div>
         </div>
 
-        {/* Column 2 (span 5.5): Interactive Visual Canvas matching Reference Screenshot */}
-        <div className="lg:col-span-5.5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl relative flex flex-col justify-between">
+        {/* Column 2 (span 6): Interactive Visual Canvas matching Reference Screenshot */}
+        <div className="lg:col-span-6 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl relative flex flex-col justify-between">
           {/* Floating Left Canvas Tools */}
           <div className="absolute left-6 top-6 z-10 flex flex-col gap-2 p-1.5 rounded-2xl bg-[#070a1a]/90 backdrop-blur-md border border-[#1a2346] shadow-xl">
             <button className="p-2 rounded-xl bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white">
@@ -450,8 +450,8 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
           </p>
         </div>
 
-        {/* Traversal Progress Donut Chart (span 3.5) */}
-        <div className="lg:col-span-3.5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex items-center justify-between">
+        {/* Traversal Progress Donut Chart (span 4) */}
+        <div className="lg:col-span-4 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex items-center justify-between">
           <div>
             <h3 className="text-xs font-bold text-white mb-2">Traversal Progress</h3>
             <div className="space-y-1 text-xs">
@@ -492,8 +492,8 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
           </div>
         </div>
 
-        {/* Result Card (span 3.5) */}
-        <div className="lg:col-span-3.5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-2">
+        {/* Result Card (span 3) */}
+        <div className="lg:col-span-3 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-white">Result</h3>
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800 text-emerald-400 text-[10px] font-bold">
