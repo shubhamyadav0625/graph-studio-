@@ -483,68 +483,205 @@ const GraphLab: React.FC = () => {
                 ))}
               </div>
 
-              {/* 6 Bottom Metric Cards matching Reference Screenshot */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#2563eb]/20 text-[#38bdf8] flex items-center justify-center font-bold">
-                    V
+              {/* Bottom Content Area: Dynamically changes based on bottomTab */}
+              {bottomTab === 'properties' && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#2563eb]/20 text-[#38bdf8] flex items-center justify-center font-bold">
+                      V
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400">Vertices</div>
+                      <div className="text-base font-extrabold text-white">{graph.vertices.length}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400">Vertices</div>
-                    <div className="text-base font-extrabold text-white">{graph.vertices.length}</div>
-                  </div>
-                </div>
 
-                <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#a855f7]/20 text-[#c084fc] flex items-center justify-center font-bold">
-                    E
+                  <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#a855f7]/20 text-[#c084fc] flex items-center justify-center font-bold">
+                      E
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400">Edges</div>
+                      <div className="text-base font-extrabold text-white">{graph.edges.length}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400">Edges</div>
-                    <div className="text-base font-extrabold text-white">{graph.edges.length}</div>
-                  </div>
-                </div>
 
-                <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#0284c7]/20 text-[#38bdf8] flex items-center justify-center font-bold">
-                    C
+                  <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#0284c7]/20 text-[#38bdf8] flex items-center justify-center font-bold">
+                      C
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400">Components</div>
+                      <div className="text-base font-extrabold text-white">1</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400">Components</div>
-                    <div className="text-base font-extrabold text-white">1</div>
-                  </div>
-                </div>
 
-                <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-950/40 text-emerald-400 flex items-center justify-center font-bold">
-                    O
+                  <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-950/40 text-emerald-400 flex items-center justify-center font-bold">
+                      O
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400">Contains Cycle</div>
+                      <div className="text-base font-extrabold text-emerald-400">Yes</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400">Contains Cycle</div>
-                    <div className="text-base font-extrabold text-emerald-400">Yes</div>
-                  </div>
-                </div>
 
-                <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-rose-950/40 text-rose-400 flex items-center justify-center font-bold">
-                    T
+                  <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-950/40 text-rose-400 flex items-center justify-center font-bold">
+                      T
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400">Is Tree</div>
+                      <div className="text-base font-extrabold text-rose-400">No</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400">Is Tree</div>
-                    <div className="text-base font-extrabold text-rose-400">No</div>
-                  </div>
-                </div>
 
-                <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#9333ea]/20 text-[#c084fc] flex items-center justify-center font-bold">
-                    B
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-slate-400">Bipartite</div>
-                    <div className="text-base font-extrabold text-rose-400">No</div>
+                  <div className="p-3 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#9333ea]/20 text-[#c084fc] flex items-center justify-center font-bold">
+                      B
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-slate-400">Bipartite</div>
+                      <div className="text-base font-extrabold text-rose-400">No</div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {bottomTab === 'overview' && (
+                <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3 rounded-xl bg-[#0d132e] border border-[#182142] space-y-1">
+                    <div className="text-xs font-bold text-white">Degree Sequence</div>
+                    <div className="text-sm font-mono text-[#c084fc] font-bold">
+                      ({graph.vertices.map((v) => graph.edges.filter((e) => e.source === v || e.target === v).length).sort((a, b) => b - a).join(', ') || '0'})
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-[#0d132e] border border-[#182142] space-y-1">
+                    <div className="text-xs font-bold text-white">Handshaking Lemma</div>
+                    <div className="text-xs text-slate-300">
+                      Σ deg(v) = <span className="font-mono text-emerald-400 font-bold">{graph.edges.length * 2}</span> = 2 × |E|
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-[#0d132e] border border-[#182142] space-y-1">
+                    <div className="text-xs font-bold text-white">Graph Density</div>
+                    <div className="text-sm font-mono text-white font-bold">
+                      {graph.vertices.length > 1
+                        ? ((2 * graph.edges.length) / (graph.vertices.length * (graph.vertices.length - 1))).toFixed(2)
+                        : '0.00'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {bottomTab === 'adjList' && (
+                <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg space-y-2">
+                  <div className="flex items-center justify-between pb-1 border-b border-[#141b38]">
+                    <span className="text-xs font-bold text-white">Adjacency List</span>
+                    <span className="text-[11px] font-mono text-emerald-400 font-bold">Space: O(V + E)</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-[160px] overflow-y-auto">
+                    {graph.vertices.map((v) => {
+                      const nbs = graph.edges
+                        .filter((e) => e.source === v || e.target === v)
+                        .map((e) => (e.source === v ? e.target : e.source));
+                      return (
+                        <div key={v} className="p-2 rounded-xl bg-[#0d132e] border border-[#182142] flex items-center justify-between font-mono text-xs">
+                          <span className="font-bold text-[#38bdf8]">{v}</span>
+                          <span className="text-slate-300 truncate">{nbs.length > 0 ? nbs.join(', ') : '—'}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {bottomTab === 'adjMatrix' && (
+                <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg space-y-2">
+                  <div className="flex items-center justify-between pb-1 border-b border-[#141b38]">
+                    <span className="text-xs font-bold text-white">
+                      Adjacency Matrix ({graph.vertices.length} × {graph.vertices.length})
+                    </span>
+                    <span className="text-[11px] font-mono text-amber-400 font-bold">Space: O(V²)</span>
+                  </div>
+                  <div className="overflow-x-auto max-h-[160px]">
+                    <table className="w-full text-center border-collapse font-mono text-xs">
+                      <thead>
+                        <tr className="text-slate-400">
+                          <th className="p-1"></th>
+                          {graph.vertices.map((v) => (
+                            <th key={v} className="p-1 font-bold text-white">{v}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {graph.vertices.map((u) => (
+                          <tr key={u} className="hover:bg-[#121938]">
+                            <td className="p-1 font-bold text-white">{u}</td>
+                            {graph.vertices.map((v) => {
+                              const isConnected = graph.edges.some(
+                                (e) => (e.source === u && e.target === v) || (e.source === v && e.target === u)
+                              );
+                              return (
+                                <td
+                                  key={v}
+                                  className={`p-1 font-bold ${
+                                    isConnected ? 'text-white bg-[#6e2bf5]/30' : 'text-slate-500'
+                                  }`}
+                                >
+                                  {isConnected ? 1 : 0}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {bottomTab === 'incMatrix' && (
+                <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-lg space-y-2">
+                  <div className="flex items-center justify-between pb-1 border-b border-[#141b38]">
+                    <span className="text-xs font-bold text-white">
+                      Incidence Matrix ({graph.vertices.length} × {graph.edges.length})
+                    </span>
+                    <span className="text-[11px] font-mono text-indigo-400 font-bold">Space: O(V × E)</span>
+                  </div>
+                  <div className="overflow-x-auto max-h-[160px]">
+                    <table className="w-full text-center border-collapse font-mono text-xs">
+                      <thead>
+                        <tr className="text-slate-400">
+                          <th className="p-1"></th>
+                          {graph.edges.map((_, idx) => (
+                            <th key={idx} className="p-1 font-semibold text-slate-300">e{idx + 1}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {graph.vertices.map((v) => (
+                          <tr key={v} className="hover:bg-[#121938]">
+                            <td className="p-1 font-bold text-white">{v}</td>
+                            {graph.edges.map((e, idx) => {
+                              const isIncident = e.source === v || e.target === v;
+                              return (
+                                <td
+                                  key={idx}
+                                  className={`p-1 font-bold ${
+                                    isIncident ? 'text-white bg-[#0284c7]/30' : 'text-slate-500'
+                                  }`}
+                                >
+                                  {isIncident ? 1 : 0}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
