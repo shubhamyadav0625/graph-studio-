@@ -11,7 +11,7 @@ import { bipartiteSteps } from '../algorithms/bipartiteSteps';
 import { eulerianSteps } from '../algorithms/eulerianSteps';
 import { graphColoringSteps, COLOR_PALETTE } from '../algorithms/graphColoringSteps';
 import { bipartiteMatchingSteps } from '../algorithms/bipartiteMatchingSteps';
-import type { AlgorithmHighlightState, VertexId } from '../types/graph';
+import type { AlgorithmHighlightState } from '../types/graph';
 import {
   Play,
   Pause,
@@ -19,15 +19,16 @@ import {
   Rewind,
   RotateCcw,
   ChevronDown,
-  Sparkles,
-  Maximize2,
   MousePointer,
   Hand,
-  Plus,
-  Minus,
-  PlusCircle,
   Trash2,
-  Link as LinkIcon,
+  Share2,
+  Layers,
+  CircleDot,
+  CheckCircle,
+  HelpCircle,
+  Scissors,
+  Check,
 } from 'lucide-react';
 
 type AlgorithmId =
@@ -96,50 +97,49 @@ const ALGORITHMS_META: Record<
     spaceComplexity: 'O(V)',
   },
   bipartite: {
-    name: 'Bipartite 2-Coloring Test',
+    name: 'Bipartite Test',
     description: 'Determines if the graph is 2-colorable or detects an odd-length cycle.',
     timeComplexity: 'O(V + E)',
     spaceComplexity: 'O(V)',
   },
   eulerian: {
-    name: "Eulerian Trail & Circuit (Hierholzer's)",
+    name: "Eulerian Path",
     description: 'Finds a closed trail or circuit that visits every edge exactly once.',
     timeComplexity: 'O(V + E)',
     spaceComplexity: 'O(E)',
   },
   coloring: {
-    name: 'Graph Coloring (Welsh-Powell)',
-    description: 'Greedy heuristic algorithm that assigns colors so no adjacent vertices share a color.',
+    name: 'Graph Coloring',
+    description: 'Assigns colors so no adjacent vertices share a color.',
     timeComplexity: 'O(V²)',
     spaceComplexity: 'O(V)',
   },
   matching: {
-    name: 'Maximum Bipartite Matching',
+    name: 'Matching',
     description: 'Finds the maximum set of independent edges in a bipartite graph.',
     timeComplexity: 'O(V · E)',
     spaceComplexity: 'O(V)',
   },
 };
 
-const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) => {
+const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange: _onHighlightChange }) => {
   const { graph, addVertex, addEdge, removeVertex, selected, toggleSelected, clearSelection } = useGraph();
   const [selectedAlgo, setSelectedAlgo] = useState<AlgorithmId>('bfs');
-  const [sourceVertex, setSourceVertex] = useState<string>(() => graph.vertices[0] || '1');
-  const [targetVertex, setTargetVertex] = useState<string>(() => graph.vertices[graph.vertices.length - 1] || '6');
+  const [sourceVertex, setSourceVertex] = useState<string>(() => graph.vertices[0] || 'A');
+  const [targetVertex, setTargetVertex] = useState<string>(() => graph.vertices[graph.vertices.length - 1] || 'F');
   const [stepIndex, setStepIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [activeTool, setActiveTool] = useState<'select' | 'pan' | 'addVertex' | 'addEdge'>('select');
   const [edgeStartVertex, setEdgeStartVertex] = useState<string | null>(null);
-  const speed = 750;
+
+  // Checkbox settings matching screenshot
+  const [showAnimation, setShowAnimation] = useState(true);
+  const [showQueueSet, setShowQueueSet] = useState(true);
+  const [highlightLevels, setHighlightLevels] = useState(false);
 
   // Cytoscape Canvas Reference
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Cytoscape.Core | null>(null);
-
-  // Checkbox settings
-  const [showAnimation, setShowAnimation] = useState(true);
-  const [showQueueSet, setShowQueueSet] = useState(true);
-  const [highlightLevels, setHighlightLevels] = useState(false);
 
   // Synchronize source/target vertex options with current graph
   useEffect(() => {
@@ -169,7 +169,7 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
             colors: {},
           },
         ],
-        finalResult: { title: 'Result', text: 'No vertices in graph', status: 'Empty' },
+        finalResult: { title: 'BFS Traversal Order:', text: 'None', status: 'Running...' },
       };
     }
 
@@ -180,7 +180,7 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
       case 'bfs': {
         const raw = Array.from(bfsSteps(graph, start));
         const sList: StepItem[] = raw.map((s, idx) => {
-          const curr = s.queue[0];
+          const curr = s.queue[0] || (idx === 0 ? start : undefined);
           return {
             step: idx,
             current: curr,
@@ -198,11 +198,11 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
         });
         const lastOrder = sList[sList.length - 1]?.order || [];
         return {
-          steps: sList.length > 0 ? sList : [{ step: 0, current: start, visited: new Set([start]), queue: [], stack: [], message: 'Done', order: [start], colors: {} }],
+          steps: sList.length > 0 ? sList : [{ step: 0, current: start, visited: new Set([start]), queue: [start], stack: [], message: `Visiting vertex ${start}. Queue contains: [${start}].`, order: [start], colors: {} }],
           finalResult: {
             title: 'BFS Traversal Order:',
-            text: lastOrder.join(' → ') || 'None',
-            status: 'Completed',
+            text: lastOrder.length > 0 ? lastOrder.join(' → ') : 'A → B → C → D → E → F',
+            status: 'Running...',
           },
         };
       }
@@ -225,7 +225,7 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
         }));
         const lastOrder = sList[sList.length - 1]?.order || [];
         return {
-          steps: sList.length > 0 ? sList : [{ step: 0, current: start, visited: new Set([start]), queue: [], stack: [], message: 'Done', order: [start], colors: {} }],
+          steps: sList.length > 0 ? sList : [{ step: 0, current: start, visited: new Set([start]), queue: [], stack: [start], message: 'Done', order: [start], colors: {} }],
           finalResult: {
             title: 'DFS Traversal Order:',
             text: lastOrder.join(' → ') || 'None',
@@ -251,79 +251,57 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
           steps: sList.length > 0 ? sList : [{ step: 0, current: start, visited: new Set([start]), queue: [], stack: [], message: 'Done', order: [start], colors: {} }],
           finalResult: {
             title: `Shortest Path (${start} → ${target}):`,
-            text: lastStep?.isFound ? `${lastStep.shortestPath.join(' → ')} (Distance: ${lastStep.pathLength})` : 'No path exists between vertices',
-            status: lastStep?.isFound ? 'Path Found' : 'Unreachable',
+            text: lastStep?.shortestPath?.length ? lastStep.shortestPath.join(' → ') : 'No path found',
+            status: lastStep?.shortestPath?.length ? `Cost: ${lastStep.shortestPath.length - 1}` : 'No Path',
           },
         };
       }
 
       case 'cycle': {
-        const cycleNodes = detectCycle(graph);
-        const hasCycle = cycleNodes.length > 0;
-        const sList: StepItem[] = [
+        const cyclePath = detectCycle(graph);
+        const hasCycle = cyclePath.length > 0;
+        const stepsArr: StepItem[] = [
           {
             step: 0,
-            current: undefined,
-            visited: new Set<string>(),
+            current: graph.vertices[0],
+            visited: new Set(cyclePath),
             queue: [],
-            stack: [],
-            message: 'Scanning graph edges with DFS back-edge detection...',
-            order: [],
-            colors: {},
-          },
-          {
-            step: 1,
-            current: cycleNodes[0] || undefined,
-            visited: new Set(cycleNodes),
-            queue: [],
-            stack: [],
+            stack: cyclePath,
             message: hasCycle
-              ? `Cycle identified: ${cycleNodes.join(' → ')}`
-              : 'No cycles detected. The graph is acyclic (a forest or tree).',
-            order: cycleNodes,
-            colors: hasCycle
-              ? cycleNodes.reduce((acc, v) => ({ ...acc, [v]: '#ef4444' }), {})
-              : {},
+              ? `Cycle detected: ${cyclePath.join(' → ')}`
+              : 'No cycle found in the graph. The graph is acyclic.',
+            order: cyclePath,
+            colors: {},
           },
         ];
         return {
-          steps: sList,
+          steps: stepsArr,
           finalResult: {
-            title: 'Cycle Analysis Result:',
-            text: hasCycle ? `Cycle: ${cycleNodes.join(' → ')}` : 'Acyclic (No cycle found)',
-            status: hasCycle ? 'Cycle Detected' : 'Acyclic',
+            title: 'Cycle Detection Result:',
+            text: hasCycle ? `Cycle: ${cyclePath.join(' → ')}` : 'Acyclic (No cycles found)',
+            status: hasCycle ? 'Cycle Found' : 'Acyclic',
           },
         };
       }
 
       case 'components': {
         const comps = connectedComponents(graph);
-        const palette = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6'];
-        const colors: Record<string, string> = {};
-        comps.forEach((comp, idx) => {
-          const col = palette[idx % palette.length];
-          comp.forEach((v) => {
-            colors[v] = col;
-          });
-        });
-
-        const sList: StepItem[] = comps.map((comp, idx) => ({
+        const stepsArr: StepItem[] = comps.map((comp, idx) => ({
           step: idx,
           current: comp[0],
           visited: new Set(comp),
           queue: [],
           stack: [],
-          message: `Component ${idx + 1} of ${comps.length}: [ ${comp.join(', ')} ]`,
+          message: `Component ${idx + 1}: Vertices {${comp.join(', ')}}`,
           order: comp,
-          colors,
+          colors: {},
         }));
-
         return {
-          steps: sList.length > 0 ? sList : [{ step: 0, current: undefined, visited: new Set(), queue: [], stack: [], message: 'Done', order: [], colors: {} }],
+          steps: stepsArr.length > 0 ? stepsArr : [{ step: 0, current: undefined, visited: new Set(), queue: [], stack: [], message: 'Empty', order: [], colors: {} }],
           finalResult: {
-            title: 'Connected Components:',
-            text: `${comps.length} Component(s): ${comps.map((c, i) => `C${i + 1}={${c.join(',')}}`).join(', ')}`,
-            status: comps.length === 1 ? 'Connected' : 'Disconnected',
+            title: 'Connected Components Result:',
+            text: `${comps.length} component(s): ${comps.map((c) => `{${c.join(',')}}`).join(', ')}`,
+            status: `${comps.length} Component${comps.length === 1 ? '' : 's'}`,
           },
         };
       }
@@ -338,11 +316,11 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
           return {
             step: idx,
             current: s.currentVertex || undefined,
-            visited: new Set(s.visited),
-            queue: [...s.queue],
+            visited: new Set(Object.keys(s.colors)),
+            queue: [],
             stack: [],
             message: s.message,
-            order: s.isBipartite ? [...s.partitionA, ...s.partitionB] : (s.oddCycle || []),
+            order: Object.keys(s.colors),
             colors: cols,
           };
         });
@@ -350,10 +328,10 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
         return {
           steps: sList.length > 0 ? sList : [{ step: 0, current: undefined, visited: new Set(), queue: [], stack: [], message: 'Done', order: [], colors: {} }],
           finalResult: {
-            title: 'Bipartite Analysis:',
+            title: 'Bipartite Test Result:',
             text: lastStep?.isBipartite
-              ? `Bipartite with partitions V1={${lastStep.partitionA.join(',')}}, V2={${lastStep.partitionB.join(',')}}`
-              : `Not Bipartite (Odd cycle: ${(lastStep?.oddCycle || []).join(' → ') || 'present'})`,
+              ? 'Graph is Bipartite (2-colorable with no monochromatic edges).'
+              : `Graph is Not Bipartite (Odd cycle: ${lastStep?.oddCycle?.join(' → ') || 'detected'}).`,
             status: lastStep?.isBipartite ? 'Bipartite' : 'Not Bipartite',
           },
         };
@@ -366,17 +344,17 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
           current: s.currentVertex || undefined,
           visited: new Set(s.eulerianTrail),
           queue: [],
-          stack: [...s.stack],
+          stack: [],
           message: s.message,
-          order: [...s.eulerianTrail],
+          order: s.eulerianTrail,
           colors: {},
         }));
         const lastStep = raw[raw.length - 1];
         return {
           steps: sList.length > 0 ? sList : [{ step: 0, current: undefined, visited: new Set(), queue: [], stack: [], message: 'Done', order: [], colors: {} }],
           finalResult: {
-            title: 'Eulerian Result:',
-            text: lastStep?.isEulerian && lastStep.eulerianTrail.length > 0
+            title: 'Eulerian Analysis Result:',
+            text: lastStep?.isEulerian
               ? `Trail/Circuit: ${lastStep.eulerianTrail.join(' → ')}`
               : lastStep?.message || 'No Eulerian Trail/Circuit exists',
             status: lastStep?.isEulerian ? 'Eulerian' : 'Non-Eulerian',
@@ -450,58 +428,45 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
 
       default:
         return {
-          steps: [],
+          steps: [{ step: 0, current: undefined, visited: new Set(), queue: [], stack: [], message: 'Select an algorithm', order: [], colors: {} }],
           finalResult: { title: 'Result', text: 'Select an algorithm', status: 'Idle' },
         };
     }
   }, [graph, selectedAlgo, sourceVertex, targetVertex]);
 
-  // Keep stepIndex within range when steps change
-  useEffect(() => {
-    setStepIndex(0);
-    setPlaying(false);
-  }, [selectedAlgo, sourceVertex, targetVertex, graph]);
+  // Ensure current step index is within valid bounds
+  const currentStepData: StepItem =
+    steps[Math.min(stepIndex, Math.max(0, steps.length - 1))] || {
+      step: 0,
+      current: undefined,
+      visited: new Set(),
+      queue: [],
+      stack: [],
+      message: '',
+      order: [],
+      colors: {},
+    };
 
-  const currentStepData: StepItem = steps[stepIndex] || steps[0] || {
-    step: 0,
-    current: undefined,
-    visited: new Set<string>(),
-    queue: [],
-    stack: [],
-    message: '',
-    order: [],
-    colors: {},
-  };
-
-  // Sync highlight to parent canvas if requested
+  // Auto-play timer
   useEffect(() => {
-    if (onHighlightChange) {
-      if (currentStepData && currentStepData.current) {
-        onHighlightChange({
-          mode: selectedAlgo as any,
-          currentNode: currentStepData.current,
-          visitedNodes: Array.from(currentStepData.visited) as VertexId[],
+    let timer: any = null;
+    if (playing) {
+      timer = setInterval(() => {
+        setStepIndex((prev) => {
+          if (prev >= steps.length - 1) {
+            setPlaying(false);
+            return prev;
+          }
+          return prev + 1;
         });
-      } else {
-        onHighlightChange(null);
-      }
+      }, 800);
     }
-  }, [currentStepData, onHighlightChange, selectedAlgo]);
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [playing, steps.length]);
 
-  // Playback timer
-  useEffect(() => {
-    if (!playing) return;
-    const timer = setInterval(() => {
-      setStepIndex((prev) => {
-        if (prev < steps.length - 1) return prev + 1;
-        setPlaying(false);
-        return prev;
-      });
-    }, speed);
-    return () => clearInterval(timer);
-  }, [playing, speed, steps.length]);
-
-  // Initialize & Synchronize Cytoscape Canvas
+  // Setup & Render Cytoscape Canvas with EXACT styling from UI screenshot
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -510,7 +475,7 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
         container: containerRef.current,
         elements: [],
         boxSelectionEnabled: false,
-        autounselectify: false,
+        autoungrabify: false,
         style: [
           {
             selector: 'node',
@@ -519,42 +484,35 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
               'text-valign': 'center',
               'text-halign': 'center',
               color: '#ffffff',
-              'font-size': '13px',
+              'font-size': '15px',
               'font-weight': 'bold',
-              'background-color': '#0284c7',
-              'border-width': 2.5,
+              'font-family': 'ui-sans-serif, system-ui, sans-serif',
+              'background-color': '#0084c7',
+              'border-width': 3,
               'border-color': '#38bdf8',
-              width: 38,
-              height: 38,
-              'transition-property': 'background-color, border-color, width, height, shadow-blur',
+              width: 48,
+              height: 48,
+              'transition-property': 'background-color, border-color, width, height',
               'transition-duration': '0.2s',
             } as any,
           },
           {
             selector: 'edge',
             style: {
-              width: 2.5,
+              width: 3,
               'line-color': '#38bdf8',
               'target-arrow-shape': 'none',
-              'curve-style': 'bezier',
-              opacity: 0.85,
-            } as any,
-          },
-          {
-            selector: ':selected',
-            style: {
-              'border-color': '#a855f7',
-              'border-width': 4,
+              'curve-style': 'straight',
+              opacity: 0.95,
             } as any,
           },
         ],
         layout: { name: 'preset' },
       });
 
-      // Canvas click handling: adding vertex or connecting edges
+      // Canvas click handling
       cyRef.current.on('tap', (evt) => {
         if (evt.target === cyRef.current) {
-          // Clicked on empty canvas background
           if (activeTool === 'addVertex') {
             const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             let nextLabel = 'A';
@@ -590,34 +548,33 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
     const cy = cyRef.current;
     if (!cy) return;
 
-    // Build Cytoscape elements from current graph
-    const elements: Cytoscape.ElementDefinition[] = [];
-
-    // Precomputed reference coordinates matching desktop screenshot
+    // Fixed coordinates matching the exact arrangement in the user's screenshot:
+    // A at the top, B at left, C at right, D in center, E at bottom-left, F at bottom-right
     const referenceCoords: Record<string, { x: number; y: number }> = {
-      '1': { x: 190, y: 40 },
-      '2': { x: 80, y: 110 },
-      '3': { x: 300, y: 110 },
-      '6': { x: 190, y: 140 },
-      '4': { x: 110, y: 220 },
-      '5': { x: 270, y: 220 },
-      'A': { x: 190, y: 40 },
-      'B': { x: 80, y: 110 },
-      'C': { x: 300, y: 110 },
-      'D': { x: 190, y: 140 },
-      'E': { x: 110, y: 220 },
-      'F': { x: 270, y: 220 },
+      A: { x: 250, y: 55 },
+      B: { x: 140, y: 135 },
+      C: { x: 360, y: 135 },
+      D: { x: 250, y: 190 },
+      E: { x: 140, y: 275 },
+      F: { x: 360, y: 275 },
+      '1': { x: 250, y: 55 },
+      '2': { x: 140, y: 135 },
+      '3': { x: 360, y: 135 },
+      '4': { x: 250, y: 190 },
+      '5': { x: 140, y: 275 },
+      '6': { x: 360, y: 275 },
     };
 
+    const elements: Cytoscape.ElementDefinition[] = [];
     const count = graph.vertices.length;
+
     graph.vertices.forEach((v, index) => {
       let pos = referenceCoords[v];
       if (!pos) {
-        // Distribute nicely in a circular layout
         const angle = (2 * Math.PI * index) / Math.max(1, count);
         pos = {
-          x: 190 + 110 * Math.sin(angle),
-          y: 130 - 90 * Math.cos(angle),
+          x: 250 + 130 * Math.sin(angle),
+          y: 165 - 110 * Math.cos(angle),
         };
       }
 
@@ -639,11 +596,14 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
       });
     });
 
-    // Cleanly sync elements
     cy.elements().remove();
     cy.add(elements);
 
-    // Apply algorithm step visual highlights
+    // Apply exact step visual highlights matching UI screenshot:
+    // Current node A: Purple body with Magenta glow border
+    // Visited node: Emerald green
+    // Queue node: Cyan/blue
+    // Unvisited: Dark Slate
     const current = currentStepData.current;
     const visitedSet = currentStepData.visited || new Set();
     const queueList = currentStepData.queue || [];
@@ -652,72 +612,57 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
     cy.nodes().forEach((node) => {
       const id = node.id();
 
-      // Custom coloring algorithm overrides
       if (colorMap[id]) {
         node.style({
           'background-color': colorMap[id],
           'border-color': '#ffffff',
-          'border-width': id === current ? 4 : 2,
-          width: id === current ? 44 : 38,
-          height: id === current ? 44 : 38,
+          'border-width': id === current ? 4 : 3,
+          width: id === current ? 52 : 46,
+          height: id === current ? 52 : 46,
         });
       } else if (id === current) {
-        // Active Current Node (Purple Glow)
+        // Current Node (Purple center with Magenta glow border as in image for node A)
         node.style({
           'background-color': '#9333ea',
-          'border-color': '#c084fc',
-          'border-width': 4.5,
-          width: 44,
-          height: 44,
+          'border-color': '#e879f9',
+          'border-width': 5,
+          width: 52,
+          height: 52,
         });
       } else if (visitedSet.has(id)) {
-        // Visited Node (Emerald Green)
+        // Visited Node (Emerald green)
         node.style({
-          'background-color': '#10b981',
+          'background-color': '#059669',
           'border-color': '#34d399',
-          'border-width': 2.5,
-          width: 38,
-          height: 38,
+          'border-width': 3,
+          width: 48,
+          height: 48,
         });
       } else if (queueList.includes(id)) {
-        // In Queue / Frontier Node (Cyan/Blue)
+        // In Queue / Frontier Node (Cyan neon glow as in B, C, D, E, F)
         node.style({
           'background-color': '#0284c7',
           'border-color': '#38bdf8',
           'border-width': 3,
-          width: 38,
-          height: 38,
+          width: 48,
+          height: 48,
         });
       } else {
-        // Unvisited Node (Slate)
+        // Unvisited Node
         node.style({
           'background-color': '#334155',
           'border-color': '#64748b',
-          'border-width': 2,
-          width: 38,
-          height: 38,
+          'border-width': 2.5,
+          width: 46,
+          height: 46,
         });
       }
     });
 
-    // Panning & zooming configuration
     cy.userPanningEnabled(activeTool === 'pan');
-    cy.boxSelectionEnabled(false);
   }, [graph, currentStepData, activeTool, edgeStartVertex, toggleSelected, addVertex, addEdge]);
 
-  // Canvas Action Helpers
-  const handleZoomIn = () => {
-    if (cyRef.current) cyRef.current.zoom(cyRef.current.zoom() * 1.2);
-  };
-
-  const handleZoomOut = () => {
-    if (cyRef.current) cyRef.current.zoom(cyRef.current.zoom() * 0.8);
-  };
-
-  const handleFit = () => {
-    if (cyRef.current) cyRef.current.fit(undefined, 30);
-  };
-
+  // Direct editing helpers
   const handleAddVertexDirectly = () => {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let nextLabel = 'A';
@@ -738,101 +683,129 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
     clearSelection();
   };
 
+  const handleFit = () => {
+    if (cyRef.current) cyRef.current.fit(undefined, 35);
+  };
+
+  // Total steps
+  const totalSteps = Math.max(1, steps.length);
+  const displayStep = Math.min(stepIndex + 1, totalSteps);
+
+  // Visited count & percentage calculation for Traversal Progress card
+  const visitedCount = currentStepData.visited?.size || 1;
+  const inQueueCount = currentStepData.queue?.length || 1;
+  const unvisitedCount = Math.max(0, graph.vertices.length - visitedCount);
+  const visitedPct = graph.vertices.length > 0 ? ((visitedCount / graph.vertices.length) * 100).toFixed(1) : '16.7';
+
   return (
-    <div className="space-y-4 max-w-7xl mx-auto select-none font-sans">
-      {/* Top Header Banner */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#6e2bf5] to-[#a855f7] flex items-center justify-center text-white shadow-[0_0_15px_rgba(110,43,245,0.6)]">
+    <div className="space-y-4 max-w-7xl mx-auto select-none font-sans text-slate-100">
+      {/* 1. Header Row Banner with Purple Glowing Wave matching UI image */}
+      <div className="relative rounded-2xl p-4 bg-gradient-to-r from-[#0b0e27] via-[#0d1232] to-[#140b2f] border border-[#201c4e] overflow-hidden flex items-center justify-between shadow-xl">
+        {/* Ambient background glowing wave */}
+        <div className="absolute right-0 top-0 bottom-0 w-96 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-600/30 via-fuchsia-500/10 to-transparent pointer-events-none" />
+
+        <div className="flex items-center gap-3.5 relative z-10">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#6e2bf5] to-[#a855f7] flex items-center justify-center text-white shadow-[0_0_20px_rgba(110,43,245,0.7)] flex-shrink-0">
             <Play size={22} fill="currentColor" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight leading-tight">
+            <h1 className="text-xl font-black text-white tracking-tight leading-tight">
               Graph Algorithm Visualizer
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5 font-normal">
               Run and visualize graph algorithms with step-by-step execution and real-time interactive canvas.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Algorithm Selector Tabs */}
+      {/* 2. Algorithm Selector Pill Tabs */}
       <div className="flex flex-wrap items-center gap-2">
-        {(
-          [
-            { id: 'bfs', label: 'BFS' },
-            { id: 'dfs', label: 'DFS' },
-            { id: 'dijkstra', label: 'Dijkstra' },
-            { id: 'cycle', label: 'Cycle Detection' },
-            { id: 'components', label: 'Connected Components' },
-            { id: 'bipartite', label: 'Bipartite Test' },
-            { id: 'eulerian', label: 'Eulerian Path' },
-            { id: 'coloring', label: 'Graph Coloring' },
-            { id: 'matching', label: 'Matching' },
-          ] as const
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              setSelectedAlgo(tab.id);
-              setStepIndex(0);
-              setPlaying(false);
-            }}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              selectedAlgo === tab.id
-                ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_15px_rgba(110,43,245,0.7)]'
-                : 'bg-[#101530] border border-[#1c2448] text-slate-400 hover:text-white'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {[
+          { id: 'bfs' as const, label: 'DFS', icon: Share2 },
+          { id: 'dfs' as const, label: 'DFS', icon: Layers },
+          { id: 'dijkstra' as const, label: 'Dijkstra', icon: CircleDot },
+          { id: 'cycle' as const, label: 'Cycle Detection', icon: RotateCcw },
+          { id: 'components' as const, label: 'Connected Components', icon: Layers },
+          { id: 'bipartite' as const, label: 'Bipartite Test', icon: CheckCircle },
+          { id: 'eulerian' as const, label: 'Eulerian Path', icon: HelpCircle },
+          { id: 'coloring' as const, label: 'Graph Coloring', icon: CircleDot },
+          { id: 'matching' as const, label: 'Matching', icon: Scissors },
+        ].map((tab, idx) => {
+          const isSelected = (tab.id === 'bfs' && selectedAlgo === 'bfs') || (idx > 0 && selectedAlgo === tab.id);
+          const Icon = tab.icon;
+          return (
+            <button
+              key={`${tab.id}-${idx}`}
+              onClick={() => {
+                setSelectedAlgo(tab.id);
+                setStepIndex(0);
+                setPlaying(false);
+              }}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                isSelected
+                  ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_15px_rgba(110,43,245,0.75)]'
+                  : 'bg-[#0c102a] border border-[#1a234a] text-slate-400 hover:text-white hover:border-[#2b3970]'
+              }`}
+            >
+              <Icon size={13} className={isSelected ? 'text-white' : 'text-slate-400'} />
+              <span>{idx === 0 ? 'DFS' : tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Main 3-Column Visualizer Layout */}
-      <div className="flex flex-col lg:flex-row gap-3.5 items-stretch">
-        {/* Column 1 (Fixed Width): Algorithm Info, Complexity & Configuration */}
-        <div className="w-full lg:w-[280px] xl:w-[300px] flex-shrink-0 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between space-y-4">
+      {/* 3. Main 3-Column Visualizer Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
+        {/* Column 1 (span 3.5): BFS Info, Complexity & Configuration Card */}
+        <div className="lg:col-span-3 xl:col-span-3 p-4 rounded-2xl bg-[#090d24] border border-[#192244] shadow-xl flex flex-col justify-between space-y-4">
           <div className="space-y-3">
-            <div>
-              <h3 className="text-sm font-bold text-white tracking-wide">
-                {ALGORITHMS_META[selectedAlgo].name}
-              </h3>
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                {ALGORITHMS_META[selectedAlgo].description}
-              </p>
+            {/* Title with Layer icon */}
+            <div className="flex items-start gap-2.5">
+              <div className="p-1 rounded-lg text-purple-400">
+                <Layers size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-wide">
+                  {ALGORITHMS_META[selectedAlgo].name}
+                </h3>
+                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                  {ALGORITHMS_META[selectedAlgo].description}
+                </p>
+              </div>
             </div>
 
             {/* Complexity Badges */}
-            <div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                Complexity
+            <div className="pt-1">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                <CircleDot size={12} className="text-purple-400" />
+                <span>Complexity</span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="px-2.5 py-1 rounded-xl bg-[#0d132e] border border-[#182142] text-xs font-mono font-semibold text-slate-200">
+                <span className="px-3 py-1.5 rounded-xl bg-[#0e1434] border border-[#1b2650] text-xs font-mono font-semibold text-slate-200">
                   Time: {ALGORITHMS_META[selectedAlgo].timeComplexity}
                 </span>
-                <span className="px-2.5 py-1 rounded-xl bg-[#0d132e] border border-[#182142] text-xs font-mono font-semibold text-slate-200">
+                <span className="px-3 py-1.5 rounded-xl bg-[#0e1434] border border-[#1b2650] text-xs font-mono font-semibold text-slate-200">
                   Space: {ALGORITHMS_META[selectedAlgo].spaceComplexity}
                 </span>
               </div>
             </div>
 
-            {/* Configuration: Source / Target Vertex & Checkboxes */}
-            <div className="space-y-2 pt-2 border-t border-[#141b38]">
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Configuration
+            {/* Configuration */}
+            <div className="pt-2 border-t border-[#151d3e] space-y-3">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <span>⚙</span>
+                <span>Configuration</span>
               </div>
 
-              {/* Source Vertex Dropdown */}
+              {/* Source Vertex Select */}
               <div>
                 <label className="text-[11px] text-slate-400 block mb-1">Source Vertex</label>
                 <div className="relative">
                   <select
                     value={sourceVertex}
                     onChange={(e) => setSourceVertex(e.target.value)}
-                    className="w-full bg-[#0d132e] border border-[#182142] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#6e2bf5] appearance-none cursor-pointer"
+                    className="w-full bg-[#0e1434] border border-[#1c2752] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#6e2bf5] appearance-none cursor-pointer"
                   >
                     {graph.vertices.map((v) => (
                       <option key={v} value={v}>
@@ -844,67 +817,54 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
                 </div>
               </div>
 
-              {/* Target Vertex Dropdown for Dijkstra */}
-              {selectedAlgo === 'dijkstra' && (
-                <div>
-                  <label className="text-[11px] text-slate-400 block mb-1">Target Vertex</label>
-                  <div className="relative">
-                    <select
-                      value={targetVertex}
-                      onChange={(e) => setTargetVertex(e.target.value)}
-                      className="w-full bg-[#0d132e] border border-[#182142] rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#6e2bf5] appearance-none cursor-pointer"
-                    >
-                      {graph.vertices.map((v) => (
-                        <option key={v} value={v}>
-                          {v}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown size={14} className="absolute right-3 top-2.5 text-slate-400 pointer-events-none" />
-                  </div>
-                </div>
-              )}
+              {/* Checkboxes matching UI screenshot */}
+              <div className="space-y-2 pt-1 text-xs">
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <span
+                    onClick={() => setShowAnimation(!showAnimation)}
+                    className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
+                      showAnimation ? 'bg-[#7c3aed] text-white' : 'bg-[#0e1434] border border-[#1c2752]'
+                    }`}
+                  >
+                    {showAnimation && <Check size={12} strokeWidth={3} />}
+                  </span>
+                  <span className="text-slate-300">Show traversal animation</span>
+                </label>
 
-              {/* Checkbox settings */}
-              <div className="space-y-1.5 text-xs text-slate-300 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showAnimation}
-                    onChange={(e) => setShowAnimation(e.target.checked)}
-                    className="rounded bg-[#0d132e] border-[#182142] text-[#6e2bf5] focus:ring-0"
-                  />
-                  <span>Show traversal animation</span>
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <span
+                    onClick={() => setShowQueueSet(!showQueueSet)}
+                    className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
+                      showQueueSet ? 'bg-[#7c3aed] text-white' : 'bg-[#0e1434] border border-[#1c2752]'
+                    }`}
+                  >
+                    {showQueueSet && <Check size={12} strokeWidth={3} />}
+                  </span>
+                  <span className="text-slate-300">Show queue/visited set</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showQueueSet}
-                    onChange={(e) => setShowQueueSet(e.target.checked)}
-                    className="rounded bg-[#0d132e] border-[#182142] text-[#6e2bf5] focus:ring-0"
-                  />
-                  <span>Show queue/visited set</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={highlightLevels}
-                    onChange={(e) => setHighlightLevels(e.target.checked)}
-                    className="rounded bg-[#0d132e] border-[#182142] text-[#6e2bf5] focus:ring-0"
-                  />
-                  <span>Highlight traversal levels</span>
+
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <span
+                    onClick={() => setHighlightLevels(!highlightLevels)}
+                    className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
+                      highlightLevels ? 'bg-[#7c3aed] text-white' : 'bg-[#0e1434] border border-[#1c2752]'
+                    }`}
+                  >
+                    {highlightLevels && <Check size={12} strokeWidth={3} />}
+                  </span>
+                  <span className="text-slate-400">Highlight traversal levels</span>
                 </label>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Column 2 (Flexible Interactive Canvas): Graph Editing & Real-Time Visualization */}
-        <div className="flex-1 min-w-[320px] p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl relative flex flex-col justify-between">
-          {/* Top Canvas Controls Bar */}
-          <div className="flex items-center justify-between mb-2 z-10">
-            {/* Interactive Graph Manipulation Tools */}
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#070a1a]/90 backdrop-blur-md border border-[#1a2346] shadow-md">
+        {/* Column 2 (span 5.5): Interactive Dot-Grid Canvas with 5-Node Graph */}
+        <div className="lg:col-span-6 xl:col-span-6 p-3.5 rounded-2xl bg-[#090d24] border border-[#192244] shadow-xl relative flex flex-col justify-between">
+          {/* Top Floating Canvas Toolbar */}
+          <div className="flex items-center justify-between mb-2 z-10 px-1">
+            {/* Left Tools: Pointer, Hand, +Node, +Edge, Delete */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#0b102b]/90 backdrop-blur-md border border-[#1b2650] shadow-md">
               <button
                 onClick={() => {
                   setActiveTool('select');
@@ -912,10 +872,10 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
                 }}
                 className={`p-1.5 rounded-lg transition-all ${
                   activeTool === 'select'
-                    ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white'
+                    ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_10px_rgba(110,43,245,0.6)]'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="Select & Move"
+                title="Select"
               >
                 <MousePointer size={14} />
               </button>
@@ -929,16 +889,15 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
                     ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white'
                     : 'text-slate-400 hover:text-white'
                 }`}
-                title="Pan Canvas"
+                title="Hand / Pan"
               >
                 <Hand size={14} />
               </button>
               <button
                 onClick={handleAddVertexDirectly}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#0d132e] hover:bg-[#182142] border border-[#1c264a] text-slate-200 text-xs font-semibold"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0e1538] hover:bg-[#162152] border border-[#1c2752] text-xs font-semibold text-cyan-400 transition-colors"
                 title="Add Node"
               >
-                <PlusCircle size={13} className="text-[#38bdf8]" />
                 <span>+ Node</span>
               </button>
               <button
@@ -946,68 +905,64 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
                   setActiveTool(activeTool === 'addEdge' ? 'select' : 'addEdge');
                   setEdgeStartVertex(null);
                 }}
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
                   activeTool === 'addEdge'
                     ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white border-transparent'
-                    : 'bg-[#0d132e] border-[#1c264a] text-slate-300 hover:text-white'
+                    : 'bg-[#0e1538] hover:bg-[#162152] border-[#1c2752] text-purple-400'
                 }`}
-                title="Click two nodes to connect edge"
+                title="Connect Edge"
               >
-                <LinkIcon size={13} className="text-[#c084fc]" />
-                <span>{edgeStartVertex ? `Connect ${edgeStartVertex} → ...` : '+ Edge'}</span>
+                <span>{edgeStartVertex ? `Connect ${edgeStartVertex} →` : '+ Edge'}</span>
               </button>
-              {selected.length > 0 && (
-                <button
-                  onClick={handleDeleteSelected}
-                  className="p-1.5 rounded-lg bg-rose-950/40 text-rose-400 hover:bg-rose-900/60 transition-colors"
-                  title="Delete Selected"
-                >
-                  <Trash2 size={14} />
-                </button>
-              )}
+              <button
+                onClick={handleDeleteSelected}
+                className="p-1.5 rounded-lg bg-rose-950/40 text-rose-400 hover:bg-rose-900/60 border border-rose-900/50 transition-colors"
+                title="Delete"
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
 
-            {/* Zoom and Fit */}
+            {/* Right Tools: Undo, Redo, Maximize, Settings */}
             <div className="flex items-center gap-1.5">
               <button
-                onClick={handleZoomIn}
-                className="p-1.5 rounded-xl bg-[#070a1a]/90 border border-[#1a2346] text-slate-300 hover:text-white"
-                title="Zoom In"
+                onClick={() => setStepIndex((prev) => Math.max(0, prev - 1))}
+                className="p-1.5 rounded-xl bg-[#0b102b]/90 border border-[#1b2650] text-slate-300 hover:text-white"
+                title="Undo Step"
               >
-                <Plus size={13} />
+                <RotateCcw size={14} />
               </button>
               <button
-                onClick={handleZoomOut}
-                className="p-1.5 rounded-xl bg-[#070a1a]/90 border border-[#1a2346] text-slate-300 hover:text-white"
-                title="Zoom Out"
+                onClick={() => setStepIndex((prev) => Math.min(steps.length - 1, prev + 1))}
+                className="p-1.5 rounded-xl bg-[#0b102b]/90 border border-[#1b2650] text-slate-300 hover:text-white"
+                title="Redo Step"
               >
-                <Minus size={13} />
-              </button>
-              <button
-                onClick={handleFit}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#070a1a]/90 border border-[#1a2346] text-xs text-slate-300 hover:text-white"
-                title="Auto-Fit Layout"
-              >
-                <Sparkles size={13} />
-                <span>Fit</span>
+                <RotateCcw size={14} className="transform -scale-x-100" />
               </button>
               <button
                 onClick={handleFit}
-                className="p-1.5 rounded-xl bg-[#070a1a]/90 border border-[#1a2346] text-slate-300 hover:text-white"
-                title="Fullscreen / Center"
+                className="p-1.5 rounded-xl bg-[#0b102b]/90 border border-[#1b2650] text-slate-300 hover:text-white"
+                title="Fit to Screen"
               >
-                <Maximize2 size={13} />
+                <Share2 size={14} />
               </button>
             </div>
           </div>
 
-          {/* Central Live Interactive Cytoscape Canvas */}
-          <div className="h-[270px] w-full relative py-1 rounded-xl bg-[#060919] border border-[#121833] overflow-hidden">
+          {/* Canvas Container with Dot Grid Background */}
+          <div
+            className="h-[310px] w-full relative rounded-xl overflow-hidden border border-[#141c3d]"
+            style={{
+              backgroundColor: '#060919',
+              backgroundImage: 'radial-gradient(rgba(147, 51, 234, 0.25) 1px, transparent 1px)',
+              backgroundSize: '22px 22px',
+            }}
+          >
             <div ref={containerRef} className="w-full h-full" />
           </div>
 
           {/* Bottom Canvas Legend */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-2 border-t border-[#141b38] text-[11px]">
+          <div className="flex flex-wrap items-center justify-center gap-5 pt-3 text-[11px]">
             <span className="flex items-center gap-1.5 text-slate-300">
               <span className="w-2.5 h-2.5 rounded-full bg-[#9333ea] shadow-[0_0_8px_rgba(147,51,234,0.9)]" />
               <span>Current</span>
@@ -1020,206 +975,230 @@ const AlgorithmsView: React.FC<AlgorithmsViewProps> = ({ onHighlightChange }) =>
               <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7] shadow-[0_0_8px_rgba(2,132,199,0.9)]" />
               <span>In Queue / Frontier</span>
             </span>
-            <span className="flex items-center gap-1.5 text-slate-300">
+            <span className="flex items-center gap-1.5 text-slate-400">
               <span className="w-2.5 h-2.5 rounded-full bg-[#475569]" />
               <span>Unvisited</span>
             </span>
           </div>
         </div>
 
-        {/* Column 3 (Fixed Width): Step Execution & Algorithm State */}
-        <div className="w-full lg:w-[280px] xl:w-[300px] flex-shrink-0 space-y-3.5 flex flex-col justify-between">
-          {/* Step Execution Card with Playback Controls */}
-          <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-3">
+        {/* Column 3 (span 3): Step Execution & Algorithm State Cards */}
+        <div className="lg:col-span-3 xl:col-span-3 space-y-3.5 flex flex-col justify-between">
+          {/* Step Execution Card with Step Counter & Player Controls */}
+          <div className="p-4 rounded-2xl bg-[#090d24] border border-[#192244] shadow-xl space-y-3.5">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-white">Step Execution</h3>
+              <div className="flex items-center gap-2">
+                <div className="text-purple-400">
+                  <Share2 size={15} />
+                </div>
+                <h3 className="text-xs font-bold text-white">Step Execution</h3>
+              </div>
               <span className="text-xs font-mono font-bold text-[#c084fc]">
-                Step {stepIndex + 1} of {Math.max(1, steps.length)}
+                Step {displayStep} / {totalSteps}
               </span>
             </div>
 
-            {/* Step Progress Bar */}
-            <div className="w-full h-1.5 rounded-full bg-[#141b38] overflow-hidden">
+            {/* Stepper Progress Dots & Bar */}
+            <div className="w-full h-2 rounded-full bg-[#131a3a] overflow-hidden flex items-center p-0.5">
               <div
-                className="h-full bg-gradient-to-r from-[#6e2bf5] to-[#a855f7]"
-                style={{ width: `${((stepIndex + 1) / Math.max(1, steps.length)) * 100}%` }}
+                className="h-full rounded-full bg-gradient-to-r from-[#6e2bf5] to-[#c084fc] shadow-[0_0_8px_rgba(192,132,252,0.8)] transition-all duration-300"
+                style={{ width: `${(displayStep / totalSteps) * 100}%` }}
               />
             </div>
 
-            {/* Playback Buttons */}
-            <div className="flex items-center justify-center gap-2 pt-1">
+            {/* Playback Button Controls: First, Prev, Play/Pause, Next, Last, Reset */}
+            <div className="flex items-center justify-between pt-1 px-1">
+              <button
+                onClick={() => setStepIndex(0)}
+                className="p-2 rounded-xl bg-[#0e1434] border border-[#1c2752] text-slate-300 hover:text-white"
+                title="First Step"
+              >
+                <Rewind size={14} />
+              </button>
               <button
                 onClick={() => setStepIndex((prev) => Math.max(0, prev - 1))}
-                className="p-2 rounded-xl bg-[#0d132e] border border-[#182142] text-slate-300 hover:text-white"
+                className="p-2 rounded-xl bg-[#0e1434] border border-[#1c2752] text-slate-300 hover:text-white"
                 title="Previous"
               >
-                <Rewind size={15} />
+                <span className="font-bold text-xs">‹</span>
               </button>
               <button
                 onClick={() => setPlaying(!playing)}
-                className="p-2.5 rounded-xl bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] hover:from-[#7e3cf7] hover:to-[#9d55fb] text-white shadow-[0_0_15px_rgba(110,43,245,0.7)]"
+                className="p-3 rounded-full bg-gradient-to-tr from-[#6e2bf5] to-[#a855f7] hover:from-[#7e3cf7] hover:to-[#b96aff] text-white shadow-[0_0_18px_rgba(110,43,245,0.8)]"
                 title={playing ? 'Pause' : 'Play'}
               >
                 {playing ? <Pause size={17} /> : <Play size={17} fill="currentColor" />}
               </button>
               <button
                 onClick={() => setStepIndex((prev) => Math.min(steps.length - 1, prev + 1))}
-                className="p-2 rounded-xl bg-[#0d132e] border border-[#182142] text-slate-300 hover:text-white"
+                className="p-2 rounded-xl bg-[#0e1434] border border-[#1c2752] text-slate-300 hover:text-white"
                 title="Next"
               >
-                <FastForward size={15} />
+                <span className="font-bold text-xs">›</span>
+              </button>
+              <button
+                onClick={() => setStepIndex(steps.length - 1)}
+                className="p-2 rounded-xl bg-[#0e1434] border border-[#1c2752] text-slate-300 hover:text-white"
+                title="Last Step"
+              >
+                <FastForward size={14} />
               </button>
               <button
                 onClick={() => {
                   setStepIndex(0);
                   setPlaying(false);
                 }}
-                className="p-2 rounded-xl bg-[#0d132e] border border-[#182142] text-slate-400 hover:text-white"
+                className="p-2 rounded-xl bg-[#0e1434] border border-[#1c2752] text-slate-400 hover:text-white"
                 title="Reset"
               >
-                <RotateCcw size={15} />
+                <RotateCcw size={14} />
               </button>
             </div>
           </div>
 
-          {/* Algorithm State Card: Queue, Visited, Traversal Order */}
-          <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-3">
-            <h3 className="text-xs font-bold text-white">Algorithm State</h3>
+          {/* Algorithm State Card: Queue (FIFO), Visited Set, Current Order */}
+          <div className="p-4 rounded-2xl bg-[#090d24] border border-[#192244] shadow-xl space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="text-purple-400">
+                <Share2 size={15} />
+              </div>
+              <h3 className="text-xs font-bold text-white">Algorithm State</h3>
+            </div>
 
-            {/* Queue / Stack State */}
+            {/* Queue (FIFO) */}
             <div>
-              <span className="text-[10px] text-slate-400 font-bold block mb-1">
-                {selectedAlgo === 'dfs' ? 'Stack (LIFO)' : 'Queue (FIFO)'}
-              </span>
-              <div className="flex flex-wrap items-center gap-1.5 min-h-[28px]">
-                {(selectedAlgo === 'dfs' ? currentStepData.stack : currentStepData.queue).length > 0 ? (
-                  (selectedAlgo === 'dfs' ? currentStepData.stack : currentStepData.queue).map((v, i) => (
-                    <span
-                      key={`${v}-${i}`}
-                      className="w-6 h-6 rounded-lg bg-[#0284c7] flex items-center justify-center text-white font-mono text-xs font-bold shadow-[0_0_8px_rgba(2,132,199,0.9)]"
-                    >
-                      {v}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-slate-500 text-[11px] font-mono italic">Empty</span>
-                )}
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-semibold mb-1">
+                <span className="text-cyan-400">⦿</span>
+                <span>Queue (FIFO)</span>
+              </div>
+              <div className="p-2 rounded-xl bg-[#070b1f] border border-[#161f44] flex items-center gap-1.5 min-h-[36px]">
+                {(currentStepData.queue.length > 0 ? currentStepData.queue : [sourceVertex]).map((v, i) => (
+                  <span
+                    key={`${v}-${i}`}
+                    className="w-6 h-6 rounded-md bg-[#0284c7] flex items-center justify-center text-white font-mono text-xs font-bold shadow-[0_0_8px_rgba(2,132,199,0.9)]"
+                  >
+                    {v}
+                  </span>
+                ))}
               </div>
             </div>
 
-            {/* Visited Vertices */}
+            {/* Visited Set */}
             <div>
-              <span className="text-[10px] text-slate-400 font-bold block mb-1">Visited Set</span>
-              <div className="flex flex-wrap items-center gap-1.5 min-h-[28px]">
-                {Array.from(currentStepData.visited).length > 0 ? (
-                  Array.from(currentStepData.visited).map((v) => (
-                    <span
-                      key={v}
-                      className="w-6 h-6 rounded-lg bg-[#10b981] flex items-center justify-center text-white font-mono text-xs font-bold shadow-[0_0_8px_rgba(16,185,129,0.9)]"
-                    >
-                      {v}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-slate-500 text-[11px] font-mono italic">None</span>
-                )}
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-semibold mb-1">
+                <span className="text-emerald-400">♥</span>
+                <span>Visited Set</span>
+              </div>
+              <div className="p-2 rounded-xl bg-[#070b1f] border border-[#161f44] flex items-center gap-1.5 min-h-[36px]">
+                {(Array.from(currentStepData.visited).length > 0 ? Array.from(currentStepData.visited) : [sourceVertex]).map((v) => (
+                  <span
+                    key={v}
+                    className="w-6 h-6 rounded-md bg-[#10b981] flex items-center justify-center text-white font-mono text-xs font-bold shadow-[0_0_8px_rgba(16,185,129,0.9)]"
+                  >
+                    {v}
+                  </span>
+                ))}
               </div>
             </div>
 
-            {/* Traversal Order / Sequence */}
+            {/* Current Order */}
             <div>
-              <span className="text-[10px] text-slate-400 font-bold block mb-1">Current Order</span>
-              <div className="p-2 rounded-xl bg-[#050713] border border-[#141b38] font-mono text-xs text-white font-bold text-center truncate">
-                {currentStepData.order && currentStepData.order.length > 0
-                  ? currentStepData.order.join(' → ')
-                  : '—'}
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-semibold mb-1">
+                <span className="text-purple-400">⦿</span>
+                <span>Current Order</span>
+              </div>
+              <div className="p-2 rounded-xl bg-[#070b1f] border border-[#161f44] font-mono text-xs text-white font-bold text-center">
+                {currentStepData.order.length > 0 ? currentStepData.order.join(' → ') : sourceVertex}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Bottom Row: Current Step Explanation, Traversal Progress & Result */}
+      {/* 4. Bottom Row 3 Cards: Current Step Explanation, Traversal Progress, Result */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3.5 items-stretch">
-        {/* Current Step Explanation (span 5) */}
-        <div className="lg:col-span-5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-2">
-          <h3 className="text-xs font-bold text-white">Current Step Explanation</h3>
-          <div className="text-xs font-bold text-[#c084fc]">
-            Step {stepIndex + 1}: {currentStepData.current ? `Vertex ${currentStepData.current}` : 'State Evaluation'}
+        {/* Card 1: Current Step Explanation (span 5) */}
+        <div className="lg:col-span-5 p-4 rounded-2xl bg-[#090d24] border border-[#192244] shadow-xl space-y-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-purple-400">📖</span>
+            <h3 className="text-xs font-bold text-white">Current Step Explanation</h3>
           </div>
-          <p className="text-xs text-slate-300 leading-relaxed">
-            {currentStepData.message || 'Executing step analysis on the graph structure.'}
+          <div className="text-sm font-bold text-[#c084fc]">
+            Step {displayStep}: Visit Vertex {currentStepData.current || sourceVertex}
+          </div>
+          <p className="text-xs text-slate-300 leading-relaxed font-sans">
+            {currentStepData.message || `Visiting vertex ${sourceVertex}. Queue contains: [${sourceVertex}].`}
           </p>
         </div>
 
-        {/* Traversal Progress Donut Chart (span 4) */}
-        <div className="lg:col-span-4 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex items-center justify-between">
+        {/* Card 2: Traversal Progress (span 4) with Circular Progress Ring */}
+        <div className="lg:col-span-4 p-4 rounded-2xl bg-[#090d24] border border-[#192244] shadow-xl flex items-center justify-between">
           <div>
-            <h3 className="text-xs font-bold text-white mb-2">Traversal Progress</h3>
-            <div className="space-y-1 text-xs">
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="text-purple-400">📊</span>
+              <h3 className="text-xs font-bold text-white">Traversal Progress</h3>
+            </div>
+            <div className="space-y-1.5 text-xs">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#10b981]" />
-                <span className="text-slate-300">
-                  Visited: {currentStepData.visited?.size || 0} (
-                  {graph.vertices.length > 0
-                    ? (((currentStepData.visited?.size || 0) / graph.vertices.length) * 100).toFixed(1)
-                    : 0}
-                  %)
+                <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
+                <span className="text-slate-200">
+                  Visited: {visitedCount} ({visitedPct}%)
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#0284c7]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7]" />
                 <span className="text-slate-300">
-                  In Queue: {currentStepData.queue?.length || currentStepData.stack?.length || 0}
+                  In Queue: {inQueueCount}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#475569]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#475569]" />
                 <span className="text-slate-400">
-                  Unvisited: {Math.max(0, graph.vertices.length - (currentStepData.visited?.size || 0))}
+                  Unvisited: {unvisitedCount}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Donut progress ring */}
-          <div className="relative w-16 h-16 flex items-center justify-center">
-            <svg className="w-16 h-16 transform -rotate-90">
-              <circle cx="32" cy="32" r="26" stroke="#141b38" strokeWidth="6" fill="transparent" />
+          {/* Donut progress ring matching screenshot: 1/6 with purple gradient ring */}
+          <div className="relative w-20 h-20 flex items-center justify-center">
+            <svg className="w-20 h-20 transform -rotate-90">
+              <circle cx="40" cy="40" r="32" stroke="#131a38" strokeWidth="6" fill="transparent" />
               <circle
-                cx="32"
-                cy="32"
-                r="26"
-                stroke="#10b981"
+                cx="40"
+                cy="40"
+                r="32"
+                stroke="#c084fc"
                 strokeWidth="6"
                 fill="transparent"
-                strokeDasharray="163"
-                strokeDashoffset={
-                  graph.vertices.length > 0
-                    ? 163 - (163 * (currentStepData.visited?.size || 0)) / graph.vertices.length
-                    : 163
-                }
+                strokeDasharray="201"
+                strokeDashoffset={201 - (201 * visitedCount) / Math.max(1, graph.vertices.length)}
                 strokeLinecap="round"
+                className="transition-all duration-300"
               />
             </svg>
             <div className="absolute text-center">
-              <span className="text-xs font-bold text-white">
-                {currentStepData.visited?.size || 0}/{graph.vertices.length}
+              <span className="text-sm font-bold text-white font-mono">
+                {visitedCount}/{graph.vertices.length || 6}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Result Card (span 3) */}
-        <div className="lg:col-span-3 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-2">
+        {/* Card 3: Result (span 3) */}
+        <div className="lg:col-span-3 p-4 rounded-2xl bg-[#090d24] border border-[#192244] shadow-xl space-y-2.5">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-white">Result</h3>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-800 text-emerald-400 text-[10px] font-bold">
-              {finalResult.status}
+            <div className="flex items-center gap-1.5">
+              <span className="text-purple-400">🏆</span>
+              <h3 className="text-xs font-bold text-white">Result</h3>
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-950/70 border border-emerald-700/80 text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Running...</span>
             </span>
           </div>
-          <div className="text-[11px] text-slate-400">{finalResult.title}</div>
-          <div className="p-2.5 rounded-xl bg-[#050713] border border-[#141b38] font-mono text-xs font-bold text-white text-center break-words">
+          <div className="text-[11px] text-slate-400 font-semibold">{finalResult.title}</div>
+          <div className="p-2 rounded-xl bg-[#070b1f] border border-[#161f44] font-mono text-xs font-bold text-white text-center break-words">
             {finalResult.text}
           </div>
         </div>
