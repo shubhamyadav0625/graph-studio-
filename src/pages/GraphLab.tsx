@@ -36,7 +36,7 @@ const GraphLab: React.FC = () => {
     clearSelection,
   } = useGraph();
 
-  const [activeView, setActiveView] = useState<ActiveNavView>('editor');
+  const [activeView, setActiveView] = useState<ActiveNavView>('home');
   const [activeTool, setActiveTool] = useState<'move' | 'link' | 'select' | 'delete'>('select');
   const [highlightState, setHighlightState] = useState<AlgorithmHighlightState | null>(null);
 
