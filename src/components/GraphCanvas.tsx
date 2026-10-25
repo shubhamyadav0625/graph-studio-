@@ -1,52 +1,77 @@
 // src/components/GraphCanvas.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import Cytoscape from 'cytoscape';
-import { useGraph, useTheme } from '../context';
+import { useGraph } from '../context';
 import type { VertexId, AlgorithmHighlightState } from '../types/graph';
-import { MousePointer, Hand, ZoomIn, ZoomOut, Maximize2, Network } from 'lucide-react';
+import {
+  MousePointer,
+  Hand,
+  Plus,
+  Link as LinkIcon,
+  Unlink,
+  Move,
+  Trash2,
+  Maximize2,
+  LayoutGrid,
+  Minus,
+} from 'lucide-react';
 
 interface GraphCanvasProps {
   highlightState?: AlgorithmHighlightState | null;
+  activeTool?: 'select' | 'pan' | 'addVertex' | 'addEdge' | 'disconnect' | 'move' | 'delete';
+  onToolChange?: (tool: any) => void;
+  showWeights?: boolean;
 }
 
-// Default layout coordinates matching Reference Image exactly
+// Reference coords matching exact circular pentagon with center D from screenshot:
+// A (top), B (left), C (right), D (center), E (bottom-left), F (bottom-right)
 const REFERENCE_COORDS: Record<string, { x: number; y: number }> = {
   'A': { x: 380, y: 70 },
   'B': { x: 230, y: 180 },
   'C': { x: 530, y: 180 },
-  'D': { x: 380, y: 250 },
-  'E': { x: 230, y: 360 },
-  'F': { x: 530, y: 360 },
+  'D': { x: 380, y: 270 },
+  'E': { x: 230, y: 380 },
+  'F': { x: 530, y: 380 },
   // Numeric fallbacks
   '1': { x: 380, y: 70 },
   '2': { x: 230, y: 180 },
   '3': { x: 530, y: 180 },
-  '6': { x: 380, y: 250 },
-  '4': { x: 230, y: 360 },
-  '5': { x: 530, y: 360 },
+  '6': { x: 380, y: 270 },
+  '4': { x: 230, y: 380 },
+  '5': { x: 530, y: 380 },
 };
 
-const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
+// Edge weights from the screenshot
+const DEFAULT_EDGE_WEIGHTS: Record<string, number> = {
+  'A_B': 3,
+  'A_C': 2,
+  'A_D': 1,
+  'B_D': 4,
+  'C_D': 5,
+  'B_E': 2,
+  'C_F': 3,
+  'D_E': 6,
+  'D_F': 4,
+  'E_F': 7,
+};
+
+const GraphCanvas: React.FC<GraphCanvasProps> = ({
+  highlightState,
+  activeTool = 'select',
+  onToolChange,
+  showWeights = true,
+}) => {
+  void highlightState;
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Cytoscape.Core | null>(null);
-  const [activeTool, setActiveTool] = useState<'select' | 'pan'>('select');
-  const { theme } = useTheme();
+  const [zoomPercent, setZoomPercent] = useState(100);
+  const [edgeStart, setEdgeStart] = useState<string | null>(null);
 
-  const {
-    graph,
-    addVertex,
-    selected,
-    toggleSelected,
-  } = useGraph();
+  const { graph, addVertex, addEdge, removeVertex, selected, toggleSelected, clearSelection } = useGraph();
 
-  // Initialise Cytoscape
+  // Initialize Cytoscape with exact styles matching screenshot
   useEffect(() => {
     if (!containerRef.current) return;
-
-    const isDark = theme === 'dark';
-    const nodeBg = isDark ? '#1e3a8a' : '#2563eb';
-    const nodeBorder = isDark ? '#38bdf8' : '#60a5fa';
-    const edgeColor = isDark ? '#475569' : '#64748b';
 
     cyRef.current = Cytoscape({
       container: containerRef.current,
@@ -58,13 +83,13 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
           selector: 'node',
           style: {
             label: 'data(label)',
-            'background-color': nodeBg,
-            'border-width': 2.5,
-            'border-color': nodeBorder,
+            'background-color': '#0369a1',
+            'border-width': 3,
+            'border-color': '#38bdf8',
             color: '#ffffff',
             'font-family': 'system-ui, -apple-system, sans-serif',
             'font-weight': 'bold',
-            'font-size': 13,
+            'font-size': 14,
             'text-valign': 'center',
             'text-halign': 'center',
             width: 44,
@@ -77,16 +102,18 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
         {
           selector: 'edge',
           style: {
-            width: 2,
-            'line-color': edgeColor,
-            opacity: 0.85,
+            width: 2.8,
+            'line-color': '#0284c7',
+            opacity: 0.9,
             'curve-style': 'straight',
-            label: 'data(weight)',
-            'font-size': 10,
-            color: '#94a3b8',
-            'text-background-opacity': 0.8,
-            'text-background-color': '#080d1a',
-            'text-background-padding': '2px',
+            label: showWeights ? 'data(weight)' : '',
+            'font-size': 11,
+            'font-weight': 'bold',
+            color: '#ffffff',
+            'text-background-opacity': 1,
+            'text-background-color': '#7c3aed',
+            'text-background-padding': '3px',
+            'text-background-shape': 'roundrectangle',
             'overlay-opacity': 0,
             'transition-property': 'line-color, width, opacity',
             'transition-duration': 0.2,
@@ -95,138 +122,40 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
         {
           selector: '.selected',
           style: {
-            'border-width': 3.5,
+            'border-width': 4.5,
             'border-color': '#d946ef',
             'background-color': '#86198f',
             color: '#ffffff',
-          } as any,
-        },
-        {
-          selector: '.root',
-          style: {
-            'background-color': '#9333ea',
-            'border-color': '#c084fc',
-            'border-width': 3.5,
-            color: '#ffffff',
-          } as any,
-        },
-        {
-          selector: '.target-node',
-          style: {
-            'background-color': '#2563eb',
-            'border-color': '#38bdf8',
-            'border-width': 3.5,
-            color: '#ffffff',
-          } as any,
-        },
-        {
-          selector: '.visited',
-          style: {
-            'background-color': '#2563eb',
-            'border-color': '#60a5fa',
-            'border-width': 3,
-            color: '#ffffff',
-          } as any,
-        },
-        {
-          selector: '.frontier',
-          style: {
-            'background-color': '#0284c7',
-            'border-color': '#38bdf8',
-            'border-width': 3.5,
-            color: '#ffffff',
-          } as any,
-        },
-        {
-          selector: '.current-node',
-          style: {
-            'border-width': 4.5,
-            'border-color': '#38bdf8',
-            'background-color': '#0284c7',
             width: 48,
             height: 48,
           } as any,
         },
         {
-          selector: '.path-node',
+          selector: '.visited',
           style: {
-            'background-color': '#2563eb',
-            'border-color': '#38bdf8',
-            'border-width': 4,
+            'background-color': '#10b981',
+            'border-color': '#34d399',
+            'border-width': 3,
             color: '#ffffff',
           } as any,
         },
         {
-          selector: '.partition-a',
-          style: {
-            'background-color': '#9333ea',
-            'border-color': '#c084fc',
-            'border-width': 3.5,
-          },
-        },
-        {
-          selector: '.partition-b',
+          selector: '.in-queue',
           style: {
             'background-color': '#0284c7',
             'border-color': '#38bdf8',
             'border-width': 3.5,
-          },
+            color: '#ffffff',
+          } as any,
         },
         {
-          selector: '.odd-cycle-node',
+          selector: '.path-node',
           style: {
-            'border-color': '#ef4444',
-            'border-width': 4.5,
-          },
-        },
-        {
-          selector: '.active-edge',
-          style: {
-            width: 3.5,
-            'line-color': '#818cf8',
-            opacity: 1,
-          },
-        },
-        {
-          selector: '.conflicting-edge',
-          style: {
-            width: 4.5,
-            'line-color': '#ef4444',
-            opacity: 1,
-          },
-        },
-        {
-          selector: '.traversed-edge',
-          style: {
-            width: 3.5,
-            'line-color': '#38bdf8',
-            opacity: 1,
-          },
-        },
-        {
-          selector: '.matched-edge',
-          style: {
-            width: 4.5,
-            'line-color': '#ec4899',
-            opacity: 1,
-          },
-        },
-        {
-          selector: '.explored-edge',
-          style: {
-            width: 3,
-            'line-color': '#38bdf8',
-            opacity: 0.9,
-          },
-        },
-        {
-          selector: '.path-edge',
-          style: {
-            width: 4.5,
-            'line-color': '#38bdf8',
-            opacity: 1,
-            'z-index': 10,
-          },
+            'background-color': '#eab308',
+            'border-color': '#fde047',
+            'border-width': 4,
+            color: '#000000',
+          } as any,
         },
       ],
       layout: { name: 'preset' },
@@ -234,63 +163,79 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
 
     const cy = cyRef.current!;
 
-    // Node click
+    // Tap on node
     cy.on('tap', 'node', (evt) => {
       const node = evt.target;
       const id = node.id() as VertexId;
-      toggleSelected(id);
-    });
 
-    // Background click adds node
-    cy.on('tap', (event) => {
-      if (event.target === cy) {
-        const pan = cy.pan();
-        const zoom = cy.zoom();
-        const renderedPos = event.renderedPosition;
-        const x = (renderedPos.x - pan.x) / zoom;
-        const y = (renderedPos.y - pan.y) / zoom;
-
-        const allNumbers = graph.vertices.every((v) => !isNaN(Number(v)));
-        let newId = '';
-        if (allNumbers && graph.vertices.length > 0) {
-          const maxNum = Math.max(...graph.vertices.map((v) => Number(v)));
-          newId = String(maxNum + 1);
+      if (activeTool === 'addEdge') {
+        if (!edgeStart) {
+          setEdgeStart(id);
+          toggleSelected(id);
         } else {
-          newId = `v${graph.vertices.length + 1}`;
-        }
-        addVertex(newId);
-
-        setTimeout(() => {
-          const cyInst = cyRef.current;
-          if (cyInst) {
-            const added = cyInst.$(`node#${newId}`);
-            if (added.length > 0) {
-              added.position({ x, y });
-            }
+          if (edgeStart !== id) {
+            addEdge(edgeStart, id);
           }
-        }, 30);
+          setEdgeStart(null);
+          clearSelection();
+        }
+      } else if (activeTool === 'delete') {
+        removeVertex(id);
+      } else {
+        toggleSelected(id);
       }
     });
 
-    // Zoom listener
+    // Tap on background
+    cy.on('tap', (event) => {
+      if (event.target === cy) {
+        if (activeTool === 'addVertex') {
+          const pan = cy.pan();
+          const zoom = cy.zoom();
+          const pos = event.renderedPosition;
+          const x = (pos.x - pan.x) / zoom;
+          const y = (pos.y - pan.y) / zoom;
+
+          const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+          let nextLabel = 'A';
+          for (let i = 0; i < 26; i++) {
+            if (!graph.vertices.includes(alphabet[i])) {
+              nextLabel = alphabet[i];
+              break;
+            }
+          }
+          if (graph.vertices.includes(nextLabel)) {
+            nextLabel = String(graph.vertices.length + 1);
+          }
+          addVertex(nextLabel);
+
+          setTimeout(() => {
+            const added = cy.$(`node#${nextLabel}`);
+            if (added.length > 0) {
+              added.position({ x, y });
+            }
+          }, 30);
+        } else {
+          clearSelection();
+          setEdgeStart(null);
+        }
+      }
+    });
+
     cy.on('zoom', () => {
-      // zoom tracked internally
+      setZoomPercent(Math.round(cy.zoom() * 100));
     });
 
     return () => {
       cy.destroy();
       cyRef.current = null;
     };
-  }, [theme]);
+  }, [showWeights]);
 
-  // Sync elements & apply highlights
+  // Sync elements & apply exact styling
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
-
-    const isDark = theme === 'dark';
-    const defaultNodeBg = isDark ? '#1e3a8a' : '#2563eb';
-    const defaultNodeBorder = isDark ? '#38bdf8' : '#60a5fa';
 
     const currentNodeIds = new Set(cy.nodes().map((n) => n.id()));
     const graphNodeIds = new Set(graph.vertices);
@@ -298,8 +243,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
     graph.vertices.forEach((v, index) => {
       if (!currentNodeIds.has(v)) {
         const presetPos = REFERENCE_COORDS[v];
-        const defaultX = presetPos ? presetPos.x : 200 + (index % 4) * 90;
-        const defaultY = presetPos ? presetPos.y : 150 + Math.floor(index / 4) * 90;
+        const defaultX = presetPos ? presetPos.x : 200 + (index % 4) * 110;
+        const defaultY = presetPos ? presetPos.y : 150 + Math.floor(index / 4) * 100;
 
         cy.add({
           group: 'nodes',
@@ -323,9 +268,13 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
       const id = makeEdgeId(e.source, e.target);
       graphEdgeIds.add(id);
       if (!currentEdgeIds.has(id)) {
+        const key1 = `${e.source}_${e.target}`;
+        const key2 = `${e.target}_${e.source}`;
+        const weight = DEFAULT_EDGE_WEIGHTS[key1] || DEFAULT_EDGE_WEIGHTS[key2] || (e as any).weight || 1;
+
         cy.add({
           group: 'edges',
-          data: { id, source: e.source, target: e.target },
+          data: { id, source: e.source, target: e.target, weight: String(weight) },
         });
       }
     });
@@ -336,222 +285,213 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({ highlightState }) => {
       }
     });
 
-    // Clean classes and custom inline styles
-    cy.nodes().removeClass('selected visited frontier root target-node current-node path-node partition-a partition-b odd-cycle-node');
-    cy.edges().removeClass('active-edge conflicting-edge traversed-edge matched-edge explored-edge path-edge');
-    cy.nodes().forEach((n) => {
-      n.style('background-color', defaultNodeBg);
-      n.style('border-color', defaultNodeBorder);
-    });
+    // Reset styles
+    cy.nodes().removeClass('selected visited in-queue path-node');
+    cy.edges().removeClass('path-edge');
 
+    // Highlight selected nodes
     selected.forEach((id) => {
       cy.$(`node#${id}`).addClass('selected');
     });
 
-    // Check highlightState prop
-    if (highlightState) {
-      if (highlightState.rootNode) {
-        cy.$(`node#${highlightState.rootNode}`).addClass('root');
-      }
-      if (highlightState.targetNode) {
-        cy.$(`node#${highlightState.targetNode}`).addClass('target-node');
-      }
-      if (highlightState.currentNode) {
-        cy.$(`node#${highlightState.currentNode}`).addClass('current-node');
-      }
-      if (highlightState.visitedNodes) {
-        highlightState.visitedNodes.forEach((id) => {
-          if (id !== highlightState.rootNode && id !== highlightState.targetNode) {
-            cy.$(`node#${id}`).addClass('visited');
-          }
-        });
-      }
-      if (highlightState.frontierNodes) {
-        highlightState.frontierNodes.forEach((id) => {
-          cy.$(`node#${id}`).addClass('frontier');
-        });
-      }
-
-      // Shortest path nodes and edges
-      if (highlightState.exploredEdgeIds) {
-        highlightState.exploredEdgeIds.forEach((eid) => {
-          cy.$(`edge#${eid}`).addClass('explored-edge');
-        });
-      }
-      if (highlightState.pathEdgeIds) {
-        highlightState.pathEdgeIds.forEach((eid) => {
-          cy.$(`edge#${eid}`).addClass('path-edge');
-        });
-      }
-      if (highlightState.pathNodes) {
-        highlightState.pathNodes.forEach((id) => {
-          if (id === highlightState.rootNode) {
-            cy.$(`node#${id}`).addClass('root');
-          } else if (id === highlightState.targetNode) {
-            cy.$(`node#${id}`).addClass('target-node');
-          } else {
-            cy.$(`node#${id}`).addClass('path-node');
-          }
-        });
-      }
-
-      // Bipartite partitions
-      if (highlightState.partitionA) {
-        highlightState.partitionA.forEach((id) => {
-          cy.$(`node#${id}`).addClass('partition-a');
-        });
-      }
-      if (highlightState.partitionB) {
-        highlightState.partitionB.forEach((id) => {
-          cy.$(`node#${id}`).addClass('partition-b');
-        });
-      }
-      if (highlightState.oddCycle) {
-        highlightState.oddCycle.forEach((id) => {
-          cy.$(`node#${id}`).addClass('odd-cycle-node');
-        });
-      }
-      if (highlightState.conflictingEdge) {
-        const edgeId = makeEdgeId(highlightState.conflictingEdge.source, highlightState.conflictingEdge.target);
-        cy.$(`edge#${edgeId}`).addClass('conflicting-edge');
-      }
-
-      // Graph Coloring
-      if (highlightState.nodeColors) {
-        Object.entries(highlightState.nodeColors).forEach(([vId, hexColor]) => {
-          const node = cy.$(`node#${vId}`);
-          if (node.length > 0) {
-            node.style('background-color', hexColor);
-            node.style('border-color', '#ffffff');
-          }
-        });
-      }
-
-      // Eulerian active edges
-      if (highlightState.activeEdgeIds) {
-        highlightState.activeEdgeIds.forEach((eid) => {
-          cy.$(`edge#${eid}`).addClass('traversed-edge');
-        });
-      }
-
-      // Matching edges
-      if (highlightState.matchedEdgeIds) {
-        highlightState.matchedEdgeIds.forEach((eid) => {
-          cy.$(`edge#${eid}`).addClass('matched-edge');
-        });
-      }
-    }
-
-    if (selected.length === 2) {
-      const [a, b] = selected;
-      const edgeId = makeEdgeId(a, b);
-      cy.$(`edge#${edgeId}`).addClass('active-edge');
-    }
-
+    // Panning & dragging control based on active tool
+    cy.userPanningEnabled(activeTool === 'pan' || activeTool === 'move');
+    cy.boxSelectionEnabled(false);
     cy.nodes().grabify();
-  }, [graph, selected, highlightState, theme]);
+  }, [graph, selected, activeTool]);
 
   const handleZoomIn = () => {
-    const cy = cyRef.current;
-    if (!cy) return;
-    cy.zoom({ level: cy.zoom() * 1.25, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+    if (cyRef.current) cyRef.current.zoom(cyRef.current.zoom() * 1.25);
   };
 
   const handleZoomOut = () => {
-    const cy = cyRef.current;
-    if (!cy) return;
-    cy.zoom({ level: cy.zoom() * 0.8, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
+    if (cyRef.current) cyRef.current.zoom(cyRef.current.zoom() * 0.8);
   };
 
   const handleFit = () => {
-    const cy = cyRef.current;
-    if (!cy) return;
-    cy.fit(undefined, 40);
+    if (cyRef.current) cyRef.current.fit(undefined, 40);
   };
 
-  const handleAutoLayout = () => {
-    const cy = cyRef.current;
-    if (!cy) return;
-    cy.layout({
-      name: 'cose',
-      animate: true,
-      animationDuration: 400,
-      nodeRepulsion: () => 6000,
-      idealEdgeLength: () => 110,
-      padding: 40,
-    } as any).run();
+  const handleLayout = () => {
+    if (cyRef.current) {
+      cyRef.current.layout({
+        name: 'cose',
+        animate: true,
+        animationDuration: 400,
+        padding: 40,
+      } as any).run();
+    }
   };
 
-  (window as any).graphCanvasAutoLayout = handleAutoLayout;
+  (window as any).graphCanvasAutoLayout = handleLayout;
 
   return (
-    <div className="relative w-full h-[400px] lg:h-[420px] rounded-2xl overflow-hidden border border-[#16213e] bg-[#070d1d] shadow-2xl flex flex-col select-none transition-colors">
-      {/* Top Left Floating Canvas Toolbar matching Reference Image */}
-      <div className="absolute top-3.5 left-3.5 z-10 flex items-center gap-1.5 p-1 rounded-xl bg-[#0e162f]/90 border border-[#1d2b52] shadow-lg backdrop-blur-md">
+    <div className="relative w-full h-[440px] rounded-2xl overflow-hidden border border-[#161f3e] bg-[#070b1c] shadow-2xl flex flex-col select-none">
+      {/* 1. Left Vertical Floating Toolbar matching exact Screenshot */}
+      <div className="absolute left-4 top-4 z-20 flex flex-col gap-1.5 p-1 rounded-2xl bg-[#090d24]/90 backdrop-blur-md border border-[#1b2348] shadow-2xl">
         <button
-          onClick={() => setActiveTool('select')}
-          className={`p-1.5 rounded-lg transition-all ${
+          onClick={() => onToolChange?.('select')}
+          className={`p-2 rounded-xl transition-all ${
             activeTool === 'select'
-              ? 'bg-[#3b82f6] text-white shadow-[0_0_10px_rgba(59,130,246,0.6)]'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
+              : 'text-slate-400 hover:text-white hover:bg-[#121938]'
           }`}
-          title="Select & Move"
+          title="Pointer / Select"
         >
-          <MousePointer size={14} />
+          <MousePointer size={15} />
         </button>
 
         <button
-          onClick={() => setActiveTool('pan')}
-          className={`p-1.5 rounded-lg transition-all ${
+          onClick={() => onToolChange?.('pan')}
+          className={`p-2 rounded-xl transition-all ${
             activeTool === 'pan'
-              ? 'bg-[#3b82f6] text-white shadow-[0_0_10px_rgba(59,130,246,0.6)]'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
+              : 'text-slate-400 hover:text-white hover:bg-[#121938]'
           }`}
-          title="Pan View"
+          title="Hand / Pan"
         >
-          <Hand size={14} />
+          <Hand size={15} />
         </button>
 
         <button
-          onClick={handleZoomIn}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
-          title="Zoom In"
+          onClick={() => onToolChange?.('addVertex')}
+          className={`p-2 rounded-xl transition-all ${
+            activeTool === 'addVertex'
+              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
+              : 'text-slate-400 hover:text-white hover:bg-[#121938]'
+          }`}
+          title="Add Vertex"
         >
-          <ZoomIn size={14} />
+          <Plus size={15} />
         </button>
 
         <button
-          onClick={handleZoomOut}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
-          title="Zoom Out"
+          onClick={() => onToolChange?.('addEdge')}
+          className={`p-2 rounded-xl transition-all ${
+            activeTool === 'addEdge'
+              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
+              : 'text-slate-400 hover:text-white hover:bg-[#121938]'
+          }`}
+          title="Connect Edge"
         >
-          <ZoomOut size={14} />
+          <LinkIcon size={15} />
         </button>
 
+        <button
+          onClick={() => onToolChange?.('disconnect')}
+          className={`p-2 rounded-xl transition-all ${
+            activeTool === 'disconnect'
+              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
+              : 'text-slate-400 hover:text-white hover:bg-[#121938]'
+          }`}
+          title="Disconnect Edge"
+        >
+          <Unlink size={15} />
+        </button>
+
+        <button
+          onClick={() => onToolChange?.('move')}
+          className={`p-2 rounded-xl transition-all ${
+            activeTool === 'move'
+              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
+              : 'text-slate-400 hover:text-white hover:bg-[#121938]'
+          }`}
+          title="Move Elements"
+        >
+          <Move size={15} />
+        </button>
+
+        <button
+          onClick={() => onToolChange?.('delete')}
+          className={`p-2 rounded-xl transition-all ${
+            activeTool === 'delete'
+              ? 'bg-rose-600 text-white shadow-[0_0_12px_rgba(225,29,72,0.8)]'
+              : 'text-rose-400 hover:text-rose-300 hover:bg-rose-950/40'
+          }`}
+          title="Delete Vertex / Edge"
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
+
+      {/* 2. Top Right Floating Controls matching Screenshot (LayoutGrid, Fullscreen, Sparkles) */}
+      <div className="absolute right-4 top-4 z-20 flex items-center gap-1.5 p-1 rounded-xl bg-[#090d24]/90 backdrop-blur-md border border-[#1b2348] shadow-lg">
+        <button
+          onClick={handleLayout}
+          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#141b3a] transition-all"
+          title="Auto Layout"
+        >
+          <LayoutGrid size={14} />
+        </button>
         <button
           onClick={handleFit}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors"
+          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#141b3a] transition-all"
           title="Fit Canvas"
         >
           <Maximize2 size={14} />
         </button>
       </div>
 
-      {/* Top Right Mini-Map Box matching Reference Image */}
-      <div className="absolute top-3.5 right-3.5 z-10 w-24 h-20 rounded-xl bg-[#0c132a]/90 border border-[#1d2b52] shadow-xl backdrop-blur-md p-2 flex items-center justify-center pointer-events-none">
-        <div className="relative w-full h-full flex items-center justify-center">
-          <Network size={36} className="text-[#3b82f6]/40" />
-          <div className="absolute top-1 left-2 w-2 h-2 rounded-full bg-[#c084fc] shadow-[0_0_6px_rgba(192,132,252,0.8)]" />
-          <div className="absolute bottom-2 right-3 w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
-          <div className="absolute top-3 right-2 w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
-        </div>
-      </div>
-
-      {/* Main Cytoscape Canvas Container */}
+      {/* 3. Central Interactive Cytoscape Canvas with Dot-Grid Background */}
       <div
         ref={containerRef}
-        className="w-full h-full cursor-crosshair canvas-grid-dark"
+        className="w-full h-full cursor-crosshair"
+        style={{
+          backgroundImage: 'radial-gradient(#1e293b 1px, transparent 1px)',
+          backgroundSize: '20px 20px',
+        }}
       />
+
+      {/* 4. Bottom Floating Bar (Zoom +/- Fit, and Legend) matching exact Screenshot */}
+      <div className="absolute bottom-3 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
+        {/* Zoom Controls Pill */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#090d24]/90 backdrop-blur-md border border-[#1b2348] shadow-lg pointer-events-auto">
+          <span className="px-2 py-0.5 text-xs font-mono font-bold text-slate-200">
+            {zoomPercent}%
+          </span>
+          <button
+            onClick={handleZoomOut}
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-all"
+            title="Zoom Out"
+          >
+            <Minus size={13} />
+          </button>
+          <button
+            onClick={handleZoomIn}
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-all"
+            title="Zoom In"
+          >
+            <Plus size={13} />
+          </button>
+          <button
+            onClick={handleFit}
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-all"
+            title="Fit to Screen"
+          >
+            <Maximize2 size={13} />
+          </button>
+        </div>
+
+        {/* Legend matching exact screenshot colors */}
+        <div className="flex items-center gap-4 text-[11px] p-1.5 px-3 rounded-xl bg-[#090d24]/90 backdrop-blur-md border border-[#1b2348] shadow-lg pointer-events-auto font-medium">
+          <span className="flex items-center gap-1.5 text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#d946ef] shadow-[0_0_8px_rgba(217,70,239,0.9)]" />
+            <span>Selected</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.9)]" />
+            <span>Visited</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#0284c7] shadow-[0_0_8px_rgba(2,132,199,0.9)]" />
+            <span>In Queue</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-slate-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#eab308] shadow-[0_0_8px_rgba(234,179,8,0.9)]" />
+            <span>Path</span>
+          </span>
+        </div>
+      </div>
     </div>
   );
 };
