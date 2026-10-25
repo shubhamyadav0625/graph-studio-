@@ -1,6 +1,6 @@
 // src/components/Header.tsx
 import React from 'react';
-import { Network, Search, Sun, Moon } from 'lucide-react';
+import { Network, Search, Sun, Moon, Bell } from 'lucide-react';
 import { useTheme } from '../context';
 
 interface HeaderProps {
@@ -11,11 +11,11 @@ const Header: React.FC<HeaderProps> = () => {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="flex items-center justify-between px-5 py-2.5 bg-[#0a0e24] border-b border-[#141b38] text-white select-none z-30 transition-colors">
+    <header className="flex items-center justify-between px-5 py-2.5 bg-[#060814] border-b border-[#141b34] text-white select-none z-30 transition-colors">
       {/* Brand logo & tagline matching reference image */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-[#3b82f6] to-[#a855f7] shadow-[0_0_15px_rgba(168,85,247,0.5)]">
+          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-[#6e2bf5] to-[#a855f7] shadow-[0_0_15px_rgba(168,85,247,0.6)]">
             <Network size={18} className="text-white" />
           </div>
           <div>
@@ -29,17 +29,22 @@ const Header: React.FC<HeaderProps> = () => {
         </div>
       </div>
 
-      {/* Center Search Bar matching reference image */}
-      <div className="hidden sm:flex items-center gap-2 w-80 lg:w-96 px-3 py-1.5 rounded-full bg-[#0e1430] border border-[#1b254b] text-slate-400 text-xs focus-within:border-[#5b3bf6] transition-colors">
-        <Search size={14} className="text-slate-400 flex-shrink-0" />
-        <input
-          type="text"
-          placeholder="Search algorithms, topics, or graphs..."
-          className="bg-transparent border-none outline-none w-full text-slate-200 placeholder-slate-500 text-xs"
-        />
+      {/* Center Search Bar with Ctrl+K shortcut matching reference image */}
+      <div className="hidden sm:flex items-center justify-between w-80 lg:w-96 px-3.5 py-1.5 rounded-full bg-[#0a0e24] border border-[#1b254b] text-slate-400 text-xs focus-within:border-[#6e2bf5] transition-colors">
+        <div className="flex items-center gap-2 w-full">
+          <Search size={14} className="text-slate-400 flex-shrink-0" />
+          <input
+            type="text"
+            placeholder="Search algorithms, topics, or graphs..."
+            className="bg-transparent border-none outline-none w-full text-slate-200 placeholder-slate-500 text-xs"
+          />
+        </div>
+        <kbd className="px-1.5 py-0.5 rounded bg-[#141b3a] border border-[#232d56] text-[10px] font-mono text-slate-400 font-semibold">
+          Ctrl + K
+        </kbd>
       </div>
 
-      {/* Right Controls: GitHub icon, Theme toggle & user avatar S */}
+      {/* Right Controls: GitHub icon, Theme toggle, Notification Bell & user avatar S */}
       <div className="flex items-center space-x-3">
         <a
           href="https://github.com/shubhamyadav0625/graph-studio-"
@@ -67,8 +72,14 @@ const Header: React.FC<HeaderProps> = () => {
           )}
         </button>
 
+        {/* Notification bell */}
+        <button className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-all relative">
+          <Bell size={17} />
+          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#f43f5e]" />
+        </button>
+
         {/* User avatar S matching reference image */}
-        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-[#5b3bf6] text-white font-bold text-xs shadow-[0_0_12px_rgba(91,59,246,0.6)] cursor-pointer">
+        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-tr from-[#6e2bf5] to-[#a855f7] text-white font-bold text-xs shadow-[0_0_12px_rgba(110,43,245,0.7)] cursor-pointer">
           S
         </div>
       </div>

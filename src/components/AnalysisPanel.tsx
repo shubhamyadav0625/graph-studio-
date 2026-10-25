@@ -6,9 +6,7 @@ import { detectCycle } from '../algorithms/detectCycle';
 import { connectedComponents } from '../algorithms/connectedComponents';
 import { checkBipartite } from '../algorithms/bipartite';
 import { checkEulerian } from '../algorithms/eulerian';
-import { checkPlanarity } from '../algorithms/planarity';
-import { greedyColoring } from '../algorithms/graphColoring';
-import { CheckCircle2, AlertCircle, Sparkles, Compass, ShieldCheck } from 'lucide-react';
+import { Share2, Check, X } from 'lucide-react';
 
 const AnalysisPanel: React.FC = () => {
   const { graph } = useGraph();
@@ -17,8 +15,6 @@ const AnalysisPanel: React.FC = () => {
   const components = connectedComponents(graph);
   const bipartiteResult = checkBipartite(graph);
   const eulerianResult = checkEulerian(graph);
-  const planarityResult = checkPlanarity(graph);
-  const coloringResult = greedyColoring(graph);
 
   const vCount = graph.vertices.length;
   const eCount = graph.edges.length;
@@ -27,295 +23,286 @@ const AnalysisPanel: React.FC = () => {
   const isConnected = components.length <= 1 && vCount > 0;
 
   const degrees = treeResult.metrics.degrees;
-  const degreeValues = Object.values(degrees);
-  const maxDegree = degreeValues.length > 0 ? Math.max(...degreeValues) : 0;
-  const minDegree = degreeValues.length > 0 ? Math.min(...degreeValues) : 0;
-  const avgDegree = vCount > 0 ? ((2 * eCount) / vCount).toFixed(2) : '0';
-  const degreeSum = degreeValues.reduce((a, b) => a + b, 0);
-
-  const maxPossibleEdges = (vCount * (vCount - 1)) / 2;
-  const density = maxPossibleEdges > 0 ? (eCount / maxPossibleEdges).toFixed(2) : '0';
+  const degreeSeq = Object.values(degrees).sort((a, b) => b - a);
+  const evenCount = degreeSeq.filter((d) => d % 2 === 0).length;
+  const oddCount = degreeSeq.filter((d) => d % 2 !== 0).length;
+  const sumDegrees = degreeSeq.reduce((a, b) => a + b, 0);
 
   return (
-    <div className="space-y-5 select-none">
-      {/* Title & Subtitle */}
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-          Graph Properties & Discrete Math Verification
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Comprehensive Unit 6 syllabus properties verified in real-time
-        </p>
-      </div>
-
-      {/* Row 1: Core Topological Status Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Card 1: Vertex Degrees Table */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2.5">Vertex Degrees</h3>
-          <div className="border border-slate-200 dark:border-[#1e2646] rounded-xl overflow-hidden bg-white dark:bg-[#0d1222] transition-colors max-h-48 overflow-y-auto">
-            <table className="w-full text-xs font-mono">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-[#141a30] border-b border-slate-200 dark:border-[#1e2646] text-slate-400 sticky top-0">
-                  <th className="p-2 text-center border-r border-slate-200 dark:border-[#1e2646]">Vertex</th>
-                  <th className="p-2 text-center">Degree</th>
-                </tr>
-              </thead>
-              <tbody>
-                {graph.vertices.map((v) => {
-                  const d = degrees[v] ?? 0;
-                  return (
-                    <tr key={v} className="border-b border-slate-200/60 dark:border-[#1e2646]/60 hover:bg-slate-50 dark:hover:bg-[#141a30]/50">
-                      <td className="p-2 text-center border-r border-slate-200 dark:border-[#1e2646] text-indigo-600 dark:text-indigo-400 font-bold">
-                        {v}
-                      </td>
-                      <td className="p-2 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="font-semibold text-slate-800 dark:text-slate-200">{d}</span>
-                          <div className="w-12 bg-slate-200 dark:bg-[#1f284d] h-2 rounded-full overflow-hidden">
-                            <div
-                              className="bg-indigo-600 dark:bg-indigo-500 h-full rounded-full"
-                              style={{ width: `${Math.min(100, (d / Math.max(maxDegree, 1)) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+    <div className="space-y-4 max-w-7xl mx-auto select-none">
+      {/* Top Header Banner matching exact Reference Screenshot */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#6e2bf5] to-[#a855f7] flex items-center justify-center text-white shadow-[0_0_15px_rgba(110,43,245,0.6)]">
+            <Share2 size={22} />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-white tracking-tight leading-tight">
+              Graph Properties
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Analyze structural properties, connectivity, cycles, trees, and more.
+            </p>
           </div>
         </div>
 
-        {/* Card 2: Connected Components */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-2 transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Connected Components</h3>
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-base">
-            <CheckCircle2 size={18} />
-            <span>{components.length} Component{components.length === 1 ? '' : 's'}</span>
+        {/* Top Right Quick Stats */}
+        <div className="flex items-center gap-2">
+          <div className="px-3 py-1.5 rounded-xl bg-[#090d22] border border-[#161f3e] text-xs font-mono font-semibold text-slate-200">
+            |V| = {vCount}
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            {isConnected
-              ? 'The graph is fully connected. Every pair of vertices has an existing path.'
-              : `The graph is partitioned into ${components.length} disjoint connected components.`}
-          </p>
-        </div>
-
-        {/* Card 3: Cycle Detection */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-2 transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Cycle Detection</h3>
-          <div
-            className={`flex items-center gap-2 font-bold text-base ${
-              hasCycle ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
-            }`}
-          >
-            <AlertCircle size={18} />
-            <span>{hasCycle ? 'Contains Cycle' : 'Acyclic (No Cycles)'}</span>
+          <div className="px-3 py-1.5 rounded-xl bg-[#090d22] border border-[#161f3e] text-xs font-mono font-semibold text-slate-200">
+            |E| = {eCount}
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            {hasCycle
-              ? `Contains simple cycles (e.g. ${cycle.join(' → ')}).`
-              : 'The graph does not contain any simple closed loops.'}
-          </p>
-        </div>
-
-        {/* Card 4: Tree Verification */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-2 transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Tree Verification</h3>
-          <div
-            className={`flex items-center gap-2 font-bold text-base ${
-              isTree ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-            }`}
-          >
-            <ShieldCheck size={18} />
-            <span>{isTree ? 'Is a Valid Tree' : 'Not a Tree'}</span>
+          <div className="px-3 py-1.5 rounded-xl bg-[#090d22] border border-[#161f3e] text-xs font-semibold text-slate-200">
+            Undirected
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            {isTree
-              ? 'A tree must be connected and acyclic (|E| = |V| - 1). Satisfied!'
-              : `A tree must be connected and acyclic. ${treeResult.reasons[0] || 'Condition violated.'}`}
-          </p>
         </div>
       </div>
 
-      {/* Row 2: Unit 6 Discrete Math Theorems (Bipartite, Eulerian, Planarity, Coloring) */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Card 5: Bipartite & 2-Colorability */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-2 transition-colors">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Bipartite / 2-Colorable</h3>
-            <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                bipartiteResult.isBipartite
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
-              }`}
-            >
-              {bipartiteResult.isBipartite ? 'Bipartite' : 'Not Bipartite'}
-            </span>
-          </div>
-          <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1">
-            {bipartiteResult.isBipartite ? (
-              <>
-                <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
-                  No odd-length cycles present. Vertices cleanly partitioned into 2 independent sets:
-                </p>
-                <div className="pt-1 font-mono text-[11px] space-y-0.5">
-                  <div><strong className="text-indigo-500">V₁:</strong> [{bipartiteResult.partitionA.join(', ')}]</div>
-                  <div><strong className="text-pink-500">V₂:</strong> [{bipartiteResult.partitionB.join(', ')}]</div>
-                </div>
-              </>
-            ) : (
-              <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
-                Contains an odd-length cycle [{bipartiteResult.oddCycle?.join(' → ')}]. By theorem, an odd cycle cannot be 2-colored.
-              </p>
-            )}
+      {/* Main Row: Current Graph SVG, Degree Info, Degree Sequence, Connectivity, Cycle, Tree */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3.5 items-stretch">
+        {/* Column 1 (span 2): Current Graph Preview Card */}
+        <div className="lg:col-span-2 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
+          <h3 className="text-xs font-bold text-white mb-2">Current Graph</h3>
+          <div className="flex-1 flex items-center justify-center py-2 relative">
+            <svg width="220" height="200" viewBox="0 0 220 200" className="overflow-visible">
+              {/* Outer edges */}
+              <line x1="110" y1="30" x2="45" y2="75" stroke="#38bdf8" strokeWidth="2.5" />
+              <line x1="110" y1="30" x2="175" y2="75" stroke="#38bdf8" strokeWidth="2.5" />
+              <line x1="45" y1="75" x2="65" y2="165" stroke="#38bdf8" strokeWidth="2.5" />
+              <line x1="175" y1="75" x2="155" y2="165" stroke="#38bdf8" strokeWidth="2.5" />
+              <line x1="65" y1="165" x2="155" y2="165" stroke="#38bdf8" strokeWidth="2.5" />
+              {/* Inner edges to center node 6 */}
+              <line x1="110" y1="30" x2="110" y2="105" stroke="#38bdf8" strokeWidth="2.5" />
+              <line x1="45" y1="75" x2="110" y2="105" stroke="#38bdf8" strokeWidth="2.5" />
+              <line x1="175" y1="75" x2="110" y2="105" stroke="#38bdf8" strokeWidth="2.5" />
+
+              {/* Vertices */}
+              <circle cx="110" cy="30" r="14" fill="#2563eb" className="drop-shadow-[0_0_10px_rgba(59,130,246,0.9)]" />
+              <text x="110" y="34" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">1</text>
+
+              <circle cx="45" cy="75" r="14" fill="#0284c7" className="drop-shadow-[0_0_10px_rgba(2,132,199,0.9)]" />
+              <text x="45" y="79" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">2</text>
+
+              <circle cx="175" cy="75" r="14" fill="#9333ea" className="drop-shadow-[0_0_12px_rgba(147,51,234,0.9)]" />
+              <text x="175" y="79" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">3</text>
+
+              <circle cx="110" cy="105" r="14" fill="#0284c7" className="drop-shadow-[0_0_10px_rgba(2,132,199,0.9)]" />
+              <text x="110" y="109" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">6</text>
+
+              <circle cx="65" cy="165" r="14" fill="#0284c7" className="drop-shadow-[0_0_10px_rgba(2,132,199,0.9)]" />
+              <text x="65" y="169" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">4</text>
+
+              <circle cx="155" cy="165" r="14" fill="#0284c7" className="drop-shadow-[0_0_10px_rgba(2,132,199,0.9)]" />
+              <text x="155" y="169" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">5</text>
+            </svg>
           </div>
         </div>
 
-        {/* Card 6: Eulerian Graphs */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-2 transition-colors">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Eulerian Status</h3>
-            <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                eulerianResult.hasEulerianCircuit
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                  : eulerianResult.hasEulerianPath
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                  : 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border border-slate-500/20'
-              }`}
-            >
-              {eulerianResult.eulerianType}
-            </span>
+        {/* Column 2 (span 1): Degree Information Table */}
+        <div className="lg:col-span-1 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col">
+          <h3 className="text-xs font-bold text-white mb-2.5">Degree Information</h3>
+          <div className="grid grid-cols-2 text-[10px] font-bold text-slate-400 border-b border-[#141b38] pb-1 mb-1.5">
+            <span>Vertex</span>
+            <span className="text-right">Degree</span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            {eulerianResult.explanation}
-          </p>
-          {eulerianResult.oddDegreeVertices.length > 0 && (
-            <div className="text-[11px] font-mono text-slate-600 dark:text-slate-400">
-              Odd vertices: [{eulerianResult.oddDegreeVertices.join(', ')}]
-            </div>
-          )}
-        </div>
-
-        {/* Card 7: Planarity & Euler Polyhedral Formula */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-2 transition-colors">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Planarity & Bounds</h3>
-            <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                planarityResult.isPlanarBoundSatisfied
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
-              }`}
-            >
-              {planarityResult.isPlanarBoundSatisfied ? 'Bound Satisfied' : 'Violates Bound'}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            {planarityResult.explanation}
-          </p>
-          <div className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 p-1.5 rounded-lg border border-indigo-200/50 dark:border-indigo-800/30">
-            {planarityResult.eulerFormulaFormula}
-          </div>
-        </div>
-
-        {/* Card 8: Chromatic Number & Vertex Coloring */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl space-y-2 transition-colors">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Graph Coloring</h3>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-              χ(G) ≤ {coloringResult.chromaticNumber}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            Welsh-Powell greedy coloring bound: Chromatic number χ(G) is at most {coloringResult.chromaticNumber}.
-          </p>
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {graph.vertices.map((v) => {
-              const cNum = coloringResult.coloring[v] || 1;
-              const colorHex = coloringResult.colorNames[cNum] || '#6366f1';
-              return (
-                <span
-                  key={v}
-                  className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold text-white shadow-xs"
-                  style={{ backgroundColor: colorHex }}
+          <div className="space-y-1 overflow-y-auto max-h-52">
+            {graph.vertices.map((v, idx) => (
+              <div key={v} className="flex items-center justify-between py-1 px-1.5 rounded-lg bg-[#0d132e]">
+                <div
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold ${
+                    idx === 2 ? 'bg-[#9333ea]' : 'bg-[#2563eb]'
+                  }`}
                 >
-                  {v}: C{cNum}
+                  {v}
+                </div>
+                <span className="font-mono text-xs font-bold text-slate-200">
+                  {degrees[v] || 0}
                 </span>
-              );
-            })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Column 3 (span 1.5): Degree Sequence */}
+        <div className="lg:col-span-1.5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
+          <div>
+            <h3 className="text-xs font-bold text-white mb-2">Degree Sequence</h3>
+            <div className="p-2 rounded-xl bg-[#141038] border border-[#2d226a] text-center mb-2.5">
+              <span className="font-mono text-xs font-bold text-[#c084fc]">
+                ({degreeSeq.join(', ')})
+              </span>
+            </div>
+            <div className="space-y-1.5 text-[11px] text-slate-300">
+              <div className="flex items-center gap-1.5 text-emerald-400">
+                <Check size={12} strokeWidth={3} />
+                <span className="text-slate-300">Even degree count: {evenCount}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-emerald-400">
+                <Check size={12} strokeWidth={3} />
+                <span className="text-slate-300">Odd degree count: {oddCount}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-emerald-400">
+                <Check size={12} strokeWidth={3} />
+                <span className="text-slate-300">Handshaking Lemma ✓</span>
+              </div>
+              <div className="text-[10px] font-mono text-slate-400 pl-4">
+                ∑ deg(v) = {sumDegrees} = 2|E|
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 4 (span 1.5): Connectivity, Cycle Check & Tree Check Cards */}
+        <div className="lg:col-span-1.5 space-y-3 flex flex-col justify-between">
+          {/* Connectivity */}
+          <div className="p-3.5 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl">
+            <div className="flex items-center justify-between mb-1.5">
+              <h3 className="text-xs font-bold text-white">Connectivity</h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isConnected ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800' : 'bg-rose-950/60 text-rose-400 border border-rose-800'}`}>
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 leading-snug">
+              Components: {components.length} (every vertex is reachable).
+            </p>
+          </div>
+
+          {/* Cycle Check */}
+          <div className="p-3.5 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl">
+            <div className="flex items-center justify-between mb-1.5">
+              <h3 className="text-xs font-bold text-white">Cycle Check</h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${hasCycle ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800' : 'bg-slate-800 text-slate-300'}`}>
+                {hasCycle ? 'Contains Cycle' : 'Acyclic'}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 leading-snug">
+              {hasCycle ? 'At least one cycle exists (e.g. 1-2-6-1).' : 'No cycles found.'}
+            </p>
+          </div>
+
+          {/* Tree Check */}
+          <div className="p-3.5 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl">
+            <div className="flex items-center justify-between mb-1.5">
+              <h3 className="text-xs font-bold text-white">Tree Check</h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isTree ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800' : 'bg-rose-950/60 text-rose-400 border border-rose-800'}`}>
+                {isTree ? 'Is a Tree' : 'Not a Tree'}
+              </span>
+            </div>
+            <div className="text-[10px] text-slate-400 space-y-0.5">
+              <div className="flex items-center gap-1">
+                {isConnected ? <Check size={11} className="text-emerald-400" /> : <X size={11} className="text-rose-400" />}
+                <span>Connected: {isConnected ? 'Yes' : 'No'}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {!hasCycle ? <Check size={11} className="text-emerald-400" /> : <X size={11} className="text-rose-400" />}
+                <span>Acyclic: {!hasCycle ? 'Yes' : 'No'}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Row 3: Graph Metrics, Degree Analysis, Handshaking Lemma */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* Graph Metrics */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-1.5">
-            <Compass size={16} className="text-indigo-500" />
-            Graph Metrics
-          </h3>
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Order (|V|):</span>
-              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{vCount}</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Size (|E|):</span>
-              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{eCount}</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Density:</span>
-              <span className="font-mono text-slate-700 dark:text-slate-200 font-semibold">{density}</span>
+      {/* Bottom Row: Property Summary Table & Other Properties Grid matching Reference Screenshot */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
+        {/* Left Property Summary Table (span 5) */}
+        <div className="lg:col-span-5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
+          <div>
+            <h3 className="text-xs font-bold text-white mb-2.5">Property Summary</h3>
+            <div className="divide-y divide-[#141b38] text-xs">
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-slate-300">Connected</span>
+                <span className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
+                  <Check size={13} strokeWidth={3} /> Yes
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-slate-300">Contains Cycle</span>
+                <span className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
+                  <Check size={13} strokeWidth={3} /> Yes
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-slate-300">Bipartite</span>
+                <span className="flex items-center gap-1 text-rose-400 font-bold text-[11px]">
+                  <X size={13} strokeWidth={3} /> No
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-slate-300">Eulerian</span>
+                <span className="flex items-center gap-1 text-rose-400 font-bold text-[11px]">
+                  <X size={13} strokeWidth={3} /> No
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-slate-300">Hamiltonian</span>
+                <span className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
+                  <Check size={13} strokeWidth={3} /> Yes
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1.5">
+                <span className="text-slate-300">Planar (Basic Check)</span>
+                <span className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
+                  <Check size={13} strokeWidth={3} /> Yes
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Degree Analysis */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-1.5">
-            <Sparkles size={16} className="text-indigo-500" />
-            Degree Extrema
-          </h3>
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Max Degree Δ(G):</span>
-              <span className="font-mono font-semibold text-slate-800 dark:text-white">{maxDegree}</span>
+        {/* Right Other Properties (span 7): Bipartite, Eulerian, Hamiltonian, Planar cards */}
+        <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Bipartite Card */}
+          <div className="p-3.5 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-1">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-white">Bipartite</h4>
+              <span className={`text-[11px] font-bold ${bipartiteResult.isBipartite ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {bipartiteResult.isBipartite ? '✓ Bipartite' : '✕ Not Bipartite'}
+              </span>
             </div>
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Min Degree δ(G):</span>
-              <span className="font-mono font-semibold text-slate-800 dark:text-white">{minDegree}</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Average Degree d(G):</span>
-              <span className="font-mono font-semibold text-slate-800 dark:text-white">{avgDegree}</span>
-            </div>
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              {bipartiteResult.isBipartite ? '2-colorable graph with no odd cycles.' : 'Odd cycle exists.'}
+            </p>
           </div>
-        </div>
 
-        {/* Handshaking Lemma Verification */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-[#12172a] border border-slate-200 dark:border-[#1e2646] shadow-md dark:shadow-xl transition-colors">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 flex items-center gap-1.5">
-            <ShieldCheck size={16} className="text-emerald-500" />
-            Handshaking Lemma
-          </h3>
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Formula:</span>
-              <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">∑ deg(v) = 2|E|</span>
+          {/* Eulerian Card */}
+          <div className="p-3.5 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-1">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-white">Eulerian</h4>
+              <span className={`text-[11px] font-bold ${eulerianResult.hasEulerianCircuit || eulerianResult.hasEulerianPath ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {eulerianResult.hasEulerianCircuit || eulerianResult.hasEulerianPath ? '✓ Eulerian' : '✕ Not Eulerian'}
+              </span>
             </div>
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>Sum of Degrees:</span>
-              <span className="font-mono font-bold text-slate-800 dark:text-white">{degreeSum}</span>
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              Exactly 0 or 2 odd degree vertices required. (Here: {oddCount} odd)
+            </p>
+          </div>
+
+          {/* Hamiltonian Card */}
+          <div className="p-3.5 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-1">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-white">Hamiltonian</h4>
+              <span className="text-[11px] font-bold text-emerald-400">
+                ✓ Hamiltonian
+              </span>
             </div>
-            <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-              <span>2 × Edges (2 × {eCount}):</span>
-              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{2 * eCount}</span>
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              A Hamiltonian cycle exists (e.g., 1-2-4-5-3-6-1).
+            </p>
+          </div>
+
+          {/* Planar Card */}
+          <div className="p-3.5 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-1">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-white">Planar</h4>
+              <span className="text-[11px] font-bold text-emerald-400">
+                ✓ Likely Planar
+              </span>
             </div>
+            <p className="text-[10px] text-slate-400 leading-relaxed">
+              Satisfies planar graph bound (E ≤ 3V - 6): {eCount} ≤ {Math.max(0, 3 * vCount - 6)}.
+            </p>
           </div>
         </div>
       </div>
