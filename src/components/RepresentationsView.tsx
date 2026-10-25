@@ -5,7 +5,7 @@ import { Grid, Info, Sparkles } from 'lucide-react';
 
 const RepresentationsView: React.FC = () => {
   const { graph } = useGraph();
-  const [activeTab, setActiveTab] = useState<'list' | 'adjMatrix' | 'incMatrix'>('list');
+  const [activeTab, setActiveTab] = useState<'all' | 'list' | 'adjMatrix' | 'incMatrix'>('all');
 
   const vCount = graph.vertices.length;
   const eCount = graph.edges.length;
@@ -70,6 +70,16 @@ const RepresentationsView: React.FC = () => {
       {/* Selector Tabs matching Reference Screenshot */}
       <div className="flex items-center gap-2">
         <button
+          onClick={() => setActiveTab('all')}
+          className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            activeTab === 'all'
+              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_15px_rgba(110,43,245,0.7)]'
+              : 'bg-[#101530] border border-[#1c2448] text-slate-400 hover:text-white'
+          }`}
+        >
+          All Representations
+        </button>
+        <button
           onClick={() => setActiveTab('list')}
           className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
             activeTab === 'list'
@@ -101,13 +111,13 @@ const RepresentationsView: React.FC = () => {
         </button>
       </div>
 
-      {/* Main 4-Card Presentation Grid: Current Graph, Adjacency List, Adjacency Matrix, Incidence Matrix */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3.5 items-stretch">
-        {/* Card 1 (span 3): Current Graph SVG */}
-        <div className="lg:col-span-3 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
+      {/* Main Presentation Grid: Flex/Grid with balanced desktop sizing */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+        {/* Card 1: Current Graph SVG */}
+        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
           <h3 className="text-xs font-bold text-white mb-2">Current Graph</h3>
           <div className="flex-1 flex items-center justify-center py-2 relative">
-            <svg width="200" height="190" viewBox="0 0 220 200" className="overflow-visible">
+            <svg width="190" height="190" viewBox="0 0 220 200" className="overflow-visible">
               <line x1="110" y1="30" x2="45" y2="75" stroke="#38bdf8" strokeWidth="2.5" />
               <line x1="110" y1="30" x2="175" y2="75" stroke="#38bdf8" strokeWidth="2.5" />
               <line x1="45" y1="75" x2="65" y2="165" stroke="#38bdf8" strokeWidth="2.5" />
@@ -133,8 +143,8 @@ const RepresentationsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 2 (span 2): Adjacency List Table */}
-        <div className="lg:col-span-2 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
+        {/* Card 2: Adjacency List Table */}
+        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
           <div>
             <h3 className="text-xs font-bold text-white mb-2.5">Adjacency List</h3>
             <div className="grid grid-cols-12 text-[10px] font-bold text-slate-400 border-b border-[#141b38] pb-1 mb-1.5">
@@ -153,7 +163,7 @@ const RepresentationsView: React.FC = () => {
                       {v}
                     </span>
                   </div>
-                  <span className="col-span-8 text-slate-200 text-xs font-semibold">
+                  <span className="col-span-8 text-slate-200 text-xs font-semibold truncate">
                     {(adjList[v] || []).join(', ') || '—'}
                   </span>
                 </div>
@@ -162,15 +172,15 @@ const RepresentationsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 3 (span 3.5): Adjacency Matrix (6 x 6) */}
-        <div className="lg:col-span-3.5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between overflow-x-auto">
+        {/* Card 3: Adjacency Matrix */}
+        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between overflow-x-auto">
           <div>
             <h3 className="text-xs font-bold text-white mb-2.5">
               Adjacency Matrix ({vCount} × {vCount})
             </h3>
             <table className="w-full text-center border-collapse font-mono text-xs">
               <thead>
-                <tr className="text-slate-400 text-[11px]">
+                <tr className="text-slate-400 text-[10px]">
                   <th className="p-1"></th>
                   {graph.vertices.map((v) => (
                     <th key={v} className="p-1 font-bold text-slate-300">
@@ -182,11 +192,11 @@ const RepresentationsView: React.FC = () => {
               <tbody>
                 {adjMatrix.map((row, i) => (
                   <tr key={i} className="hover:bg-[#121938]">
-                    <td className="p-1 font-bold text-slate-400 text-[11px]">{graph.vertices[i]}</td>
+                    <td className="p-1 font-bold text-slate-400 text-[10px]">{graph.vertices[i]}</td>
                     {row.map((val, j) => (
                       <td
                         key={j}
-                        className={`p-1.5 text-xs font-semibold ${
+                        className={`p-1 text-xs font-semibold ${
                           val === 1 ? 'text-white bg-[#141b3a]' : 'text-slate-500'
                         }`}
                       >
@@ -200,8 +210,8 @@ const RepresentationsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Card 4 (span 3.5): Incidence Matrix (6 x 8) */}
-        <div className="lg:col-span-3.5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between overflow-x-auto">
+        {/* Card 4: Incidence Matrix */}
+        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between overflow-x-auto">
           <div>
             <h3 className="text-xs font-bold text-white mb-2.5">
               Incidence Matrix ({vCount} × {eCount})
@@ -220,7 +230,7 @@ const RepresentationsView: React.FC = () => {
               <tbody>
                 {graph.vertices.map((v) => (
                   <tr key={v} className="hover:bg-[#121938]">
-                    <td className="p-1 font-bold text-slate-400 text-[11px]">{v}</td>
+                    <td className="p-1 font-bold text-slate-400 text-[10px]">{v}</td>
                     {graph.edges.map((e, eIdx) => {
                       const isIncident = e.source === v || e.target === v ? 1 : 0;
                       return (
@@ -242,10 +252,10 @@ const RepresentationsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Row: About Representations & Key Insights matching Reference Screenshot */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
-        {/* About Representations (span 6) */}
-        <div className="lg:col-span-6 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-2">
+      {/* Bottom Row: About Representations & Key Insights */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        {/* About Representations */}
+        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-2">
           <div className="flex items-center gap-2">
             <div className="p-1 rounded-full bg-[#6e2bf5]/20 text-[#c084fc]">
               <Info size={14} />
@@ -277,8 +287,8 @@ const RepresentationsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Key Insights (span 6) */}
-        <div className="lg:col-span-6 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-2">
+        {/* Key Insights */}
+        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-2">
           <div className="flex items-center gap-2">
             <div className="p-1 rounded-full bg-[#a855f7]/20 text-[#c084fc]">
               <Sparkles size={14} />
