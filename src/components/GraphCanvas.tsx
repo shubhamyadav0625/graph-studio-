@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Cytoscape from 'cytoscape';
 import { useGraph } from '../context';
-import type { VertexId, AlgorithmHighlightState } from '../types/graph';
+import type { AlgorithmHighlightState, VertexId } from '../types/graph';
 import {
   MousePointer,
   Hand,
@@ -11,37 +11,35 @@ import {
   Unlink,
   Move,
   Trash2,
-  Maximize2,
   LayoutGrid,
+  Maximize2,
   Minus,
 } from 'lucide-react';
 
 interface GraphCanvasProps {
   highlightState?: AlgorithmHighlightState | null;
   activeTool?: 'select' | 'pan' | 'addVertex' | 'addEdge' | 'disconnect' | 'move' | 'delete';
-  onToolChange?: (tool: any) => void;
+  onToolChange?: (tool: 'select' | 'pan' | 'addVertex' | 'addEdge' | 'disconnect' | 'move' | 'delete') => void;
   showWeights?: boolean;
 }
 
-// Reference coords matching exact circular pentagon with center D from screenshot:
-// A (top), B (left), C (right), D (center), E (bottom-left), F (bottom-right)
+// Precomputed reference coordinates matching the pentagon + center layout
 const REFERENCE_COORDS: Record<string, { x: number; y: number }> = {
-  'A': { x: 380, y: 70 },
-  'B': { x: 230, y: 180 },
-  'C': { x: 530, y: 180 },
-  'D': { x: 380, y: 270 },
-  'E': { x: 230, y: 380 },
-  'F': { x: 530, y: 380 },
-  // Numeric fallbacks
-  '1': { x: 380, y: 70 },
-  '2': { x: 230, y: 180 },
-  '3': { x: 530, y: 180 },
-  '6': { x: 380, y: 270 },
-  '4': { x: 230, y: 380 },
-  '5': { x: 530, y: 380 },
+  A: { x: 380, y: 120 },
+  B: { x: 230, y: 230 },
+  C: { x: 530, y: 230 },
+  D: { x: 380, y: 270 },
+  E: { x: 280, y: 410 },
+  F: { x: 480, y: 410 },
+  '1': { x: 380, y: 120 },
+  '2': { x: 230, y: 230 },
+  '3': { x: 530, y: 230 },
+  '4': { x: 380, y: 270 },
+  '5': { x: 280, y: 410 },
+  '6': { x: 480, y: 410 },
 };
 
-// Edge weights from the screenshot
+// Edge weights mapping
 const DEFAULT_EDGE_WEIGHTS: Record<string, number> = {
   'A_B': 3,
   'A_C': 2,
@@ -67,9 +65,28 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const [zoomPercent, setZoomPercent] = useState(100);
   const [edgeStart, setEdgeStart] = useState<string | null>(null);
 
-  const { graph, addVertex, addEdge, removeVertex, selected, toggleSelected, clearSelection } = useGraph();
+  // Store activeTool in a ref so Cytoscape event handlers always access the latest value
+  const activeToolRef = useRef(activeTool);
+  useEffect(() => {
+    activeToolRef.current = activeTool;
+    if (activeTool !== 'addEdge') {
+      setEdgeStart(null);
+    }
+  }, [activeTool]);
 
-  // Initialize Cytoscape with exact styles matching screenshot
+  const edgeStartRef = useRef(edgeStart);
+  useEffect(() => {
+    edgeStartRef.current = edgeStart;
+  }, [edgeStart]);
+
+  const { graph, addVertex, addEdge, removeVertex, removeEdge, selected, toggleSelected, clearSelection } = useGraph();
+
+  const graphRef = useRef(graph);
+  useEffect(() => {
+    graphRef.current = graph;
+  }, [graph]);
+
+  // Initialize Cytoscape
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -163,33 +180,51 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
     const cy = cyRef.current!;
 
-    // Tap on node
+    // Tap on node: handle selection, addEdge, or delete
     cy.on('tap', 'node', (evt) => {
       const node = evt.target;
       const id = node.id() as VertexId;
+      const currentTool = activeToolRef.current;
+      const currentEdgeStart = edgeStartRef.current;
 
-      if (activeTool === 'addEdge') {
-        if (!edgeStart) {
+      if (currentTool === 'addEdge') {
+        if (!currentEdgeStart) {
           setEdgeStart(id);
           toggleSelected(id);
         } else {
-          if (edgeStart !== id) {
-            addEdge(edgeStart, id);
+          if (currentEdgeStart !== id) {
+            addEdge(currentEdgeStart, id);
           }
           setEdgeStart(null);
           clearSelection();
         }
-      } else if (activeTool === 'delete') {
+      } else if (currentTool === 'delete') {
         removeVertex(id);
       } else {
+        // In select or default mode:
+        // If user already had 1 node selected and clicks another node while holding or wanting to link:
         toggleSelected(id);
       }
     });
 
-    // Tap on background
+    // Tap on edge: handle delete or disconnect
+    cy.on('tap', 'edge', (evt) => {
+      const edge = evt.target;
+      const currentTool = activeToolRef.current;
+      if (currentTool === 'delete' || currentTool === 'disconnect') {
+        const source = edge.data('source');
+        const target = edge.data('target');
+        if (source && target) {
+          removeEdge(source, target);
+        }
+      }
+    });
+
+    // Tap on empty canvas background
     cy.on('tap', (event) => {
       if (event.target === cy) {
-        if (activeTool === 'addVertex') {
+        const currentTool = activeToolRef.current;
+        if (currentTool === 'addVertex') {
           const pan = cy.pan();
           const zoom = cy.zoom();
           const pos = event.renderedPosition;
@@ -198,14 +233,15 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
           const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
           let nextLabel = 'A';
+          const currentVertices = graphRef.current.vertices;
           for (let i = 0; i < 26; i++) {
-            if (!graph.vertices.includes(alphabet[i])) {
+            if (!currentVertices.includes(alphabet[i])) {
               nextLabel = alphabet[i];
               break;
             }
           }
-          if (graph.vertices.includes(nextLabel)) {
-            nextLabel = String(graph.vertices.length + 1);
+          if (currentVertices.includes(nextLabel)) {
+            nextLabel = String(currentVertices.length + 1);
           }
           addVertex(nextLabel);
 
@@ -214,7 +250,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
             if (added.length > 0) {
               added.position({ x, y });
             }
-          }, 30);
+          }, 40);
         } else {
           clearSelection();
           setEdgeStart(null);
@@ -232,7 +268,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     };
   }, [showWeights]);
 
-  // Sync elements & apply exact styling
+  // Sync elements & apply styles
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
@@ -285,53 +321,75 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       }
     });
 
-    // Reset styles
+    // Reset classes
     cy.nodes().removeClass('selected visited in-queue path-node');
     cy.edges().removeClass('path-edge');
 
-    // Highlight selected nodes
+    // Highlight selected nodes or active edge creation source
     selected.forEach((id) => {
       cy.$(`node#${id}`).addClass('selected');
     });
+
+    if (edgeStart) {
+      cy.$(`node#${edgeStart}`).addClass('selected');
+    }
 
     // Panning & dragging control based on active tool
     cy.userPanningEnabled(activeTool === 'pan' || activeTool === 'move');
     cy.boxSelectionEnabled(false);
     cy.nodes().grabify();
-  }, [graph, selected, activeTool]);
+  }, [graph, selected, edgeStart, activeTool]);
 
-  const handleZoomIn = () => {
-    if (cyRef.current) cyRef.current.zoom(cyRef.current.zoom() * 1.25);
-  };
-
-  const handleZoomOut = () => {
-    if (cyRef.current) cyRef.current.zoom(cyRef.current.zoom() * 0.8);
+  // Expose auto layout to window
+  const handleLayout = () => {
+    if (!cyRef.current) return;
+    const layout = cyRef.current.layout({
+      name: 'circle',
+      animate: true,
+      animationDuration: 400,
+      padding: 60,
+    } as any);
+    layout.run();
   };
 
   const handleFit = () => {
-    if (cyRef.current) cyRef.current.fit(undefined, 40);
-  };
-
-  const handleLayout = () => {
     if (cyRef.current) {
-      cyRef.current.layout({
-        name: 'cose',
-        animate: true,
-        animationDuration: 400,
-        padding: 40,
-      } as any).run();
+      cyRef.current.fit(undefined, 40);
+      setZoomPercent(Math.round(cyRef.current.zoom() * 100));
     }
   };
 
-  (window as any).graphCanvasAutoLayout = handleLayout;
+  const handleZoomIn = () => {
+    if (cyRef.current) {
+      cyRef.current.zoom(cyRef.current.zoom() * 1.25);
+      setZoomPercent(Math.round(cyRef.current.zoom() * 100));
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (cyRef.current) {
+      cyRef.current.zoom(cyRef.current.zoom() * 0.8);
+      setZoomPercent(Math.round(cyRef.current.zoom() * 100));
+    }
+  };
 
   return (
-    <div className="relative w-full h-[440px] rounded-2xl overflow-hidden border border-[#161f3e] bg-[#070b1c] shadow-2xl flex flex-col select-none">
-      {/* 1. Left Vertical Floating Toolbar matching exact Screenshot */}
-      <div className="absolute left-4 top-4 z-20 flex flex-col gap-1.5 p-1 rounded-2xl bg-[#090d24]/90 backdrop-blur-md border border-[#1b2348] shadow-2xl">
+    <div className="relative w-full h-full min-h-[440px] select-none">
+      {/* Visual Indicator when Add Edge mode is active */}
+      {activeTool === 'addEdge' && (
+        <div className="absolute top-4 left-20 z-30 px-3 py-1.5 rounded-xl bg-purple-900/90 border border-purple-500/80 text-white text-xs font-semibold shadow-xl flex items-center gap-2 animate-pulse">
+          <LinkIcon size={14} className="text-purple-300" />
+          <span>
+            {edgeStart ? `Click second node to connect with ${edgeStart}` : 'Click first node to start edge'}
+          </span>
+        </div>
+      )}
+
+      {/* 1. Left Floating Vertical Toolbar matching exact Screenshot */}
+      <div className="absolute left-4 top-4 z-20 flex flex-col items-center gap-1.5 p-1 rounded-2xl bg-[#090d24]/90 backdrop-blur-md border border-[#1b2348] shadow-2xl">
         <button
           onClick={() => onToolChange?.('select')}
-          className={`p-2 rounded-xl transition-all ${
+          className={`p-2 rounded-xl transition-all cursor-pointer ${
             activeTool === 'select'
               ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
               : 'text-slate-400 hover:text-white hover:bg-[#121938]'
@@ -343,7 +401,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
         <button
           onClick={() => onToolChange?.('pan')}
-          className={`p-2 rounded-xl transition-all ${
+          className={`p-2 rounded-xl transition-all cursor-pointer ${
             activeTool === 'pan'
               ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
               : 'text-slate-400 hover:text-white hover:bg-[#121938]'
@@ -355,7 +413,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
         <button
           onClick={() => onToolChange?.('addVertex')}
-          className={`p-2 rounded-xl transition-all ${
+          className={`p-2 rounded-xl transition-all cursor-pointer ${
             activeTool === 'addVertex'
               ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
               : 'text-slate-400 hover:text-white hover:bg-[#121938]'
@@ -366,8 +424,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
         </button>
 
         <button
-          onClick={() => onToolChange?.('addEdge')}
-          className={`p-2 rounded-xl transition-all ${
+          onClick={() => onToolChange?.(activeTool === 'addEdge' ? 'select' : 'addEdge')}
+          className={`p-2 rounded-xl transition-all cursor-pointer ${
             activeTool === 'addEdge'
               ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
               : 'text-slate-400 hover:text-white hover:bg-[#121938]'
@@ -379,19 +437,19 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
         <button
           onClick={() => onToolChange?.('disconnect')}
-          className={`p-2 rounded-xl transition-all ${
+          className={`p-2 rounded-xl transition-all cursor-pointer ${
             activeTool === 'disconnect'
               ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
               : 'text-slate-400 hover:text-white hover:bg-[#121938]'
           }`}
-          title="Disconnect Edge"
+          title="Disconnect Edge (Click on edge)"
         >
           <Unlink size={15} />
         </button>
 
         <button
           onClick={() => onToolChange?.('move')}
-          className={`p-2 rounded-xl transition-all ${
+          className={`p-2 rounded-xl transition-all cursor-pointer ${
             activeTool === 'move'
               ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
               : 'text-slate-400 hover:text-white hover:bg-[#121938]'
@@ -403,7 +461,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
         <button
           onClick={() => onToolChange?.('delete')}
-          className={`p-2 rounded-xl transition-all ${
+          className={`p-2 rounded-xl transition-all cursor-pointer ${
             activeTool === 'delete'
               ? 'bg-rose-600 text-white shadow-[0_0_12px_rgba(225,29,72,0.8)]'
               : 'text-rose-400 hover:text-rose-300 hover:bg-rose-950/40'
@@ -414,18 +472,18 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
         </button>
       </div>
 
-      {/* 2. Top Right Floating Controls matching Screenshot (LayoutGrid, Fullscreen, Sparkles) */}
+      {/* 2. Top Right Floating Controls matching Screenshot (LayoutGrid, Fullscreen) */}
       <div className="absolute right-4 top-4 z-20 flex items-center gap-1.5 p-1 rounded-xl bg-[#090d24]/90 backdrop-blur-md border border-[#1b2348] shadow-lg">
         <button
           onClick={handleLayout}
-          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#141b3a] transition-all"
+          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#141b3a] transition-all cursor-pointer"
           title="Auto Layout"
         >
           <LayoutGrid size={14} />
         </button>
         <button
           onClick={handleFit}
-          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#141b3a] transition-all"
+          className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#141b3a] transition-all cursor-pointer"
           title="Fit Canvas"
         >
           <Maximize2 size={14} />
@@ -451,21 +509,21 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
           </span>
           <button
             onClick={handleZoomOut}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-all"
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-all cursor-pointer"
             title="Zoom Out"
           >
             <Minus size={13} />
           </button>
           <button
             onClick={handleZoomIn}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-all"
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-all cursor-pointer"
             title="Zoom In"
           >
             <Plus size={13} />
           </button>
           <button
             onClick={handleFit}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-all"
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-[#141b3a] transition-all cursor-pointer"
             title="Fit to Screen"
           >
             <Maximize2 size={13} />

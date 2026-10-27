@@ -322,10 +322,14 @@ const GraphLab: React.FC = () => {
                         </button>
                         <button
                           onClick={handleAddEdge}
-                          className="flex items-center justify-center gap-1 py-2 px-2.5 rounded-xl bg-[#0d132e] border border-[#182142] hover:bg-[#141b3a] text-slate-200 text-xs font-semibold transition-all cursor-pointer"
+                          className={`flex items-center justify-center gap-1 py-2 px-2.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                            activeTool === 'addEdge'
+                              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white border-transparent shadow-[0_0_12px_rgba(110,43,245,0.7)]'
+                              : 'bg-[#0d132e] border border-[#182142] hover:bg-[#141b3a] text-slate-200'
+                          }`}
                         >
-                          <LinkIcon size={12} className="text-[#38bdf8]" />
-                          <span>Add Edge</span>
+                          <LinkIcon size={12} className={activeTool === 'addEdge' ? 'text-white' : 'text-[#38bdf8]'} />
+                          <span>{activeTool === 'addEdge' ? 'Pick 2 Nodes' : 'Add Edge'}</span>
                         </button>
                         <button
                           onClick={handleDelete}
