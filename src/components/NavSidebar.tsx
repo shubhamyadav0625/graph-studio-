@@ -9,7 +9,6 @@ import {
   Layers,
   BookOpen,
   GraduationCap,
-  FolderDown,
   Check,
 } from 'lucide-react';
 
@@ -21,8 +20,7 @@ export type ActiveNavView =
   | 'properties'
   | 'presets'
   | 'theory'
-  | 'learning'
-  | 'importExport';
+  | 'learning';
 
 interface NavSidebarProps {
   activeView: ActiveNavView;
@@ -38,7 +36,6 @@ const navItems: Array<{ id: ActiveNavView; label: string; icon: React.ElementTyp
   { id: 'presets', label: 'Preset Graphs', icon: Layers },
   { id: 'theory', label: 'Theory & Notes', icon: BookOpen },
   { id: 'learning', label: 'Learning Mode', icon: GraduationCap },
-  { id: 'importExport', label: 'Import / Export', icon: FolderDown },
 ];
 
 const NavSidebar: React.FC<NavSidebarProps> = ({ activeView, onSelectView }) => {

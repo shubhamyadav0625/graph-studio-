@@ -10,7 +10,6 @@ import DashboardView from './DashboardView';
 import PresetLibraryView from './PresetLibraryView';
 import Theory from './Theory';
 import LearningModeView from './LearningModeView';
-import ImportExportView from './ImportExportView';
 import type { AlgorithmHighlightState } from '../types/graph';
 import {
   Plus,
@@ -171,14 +170,35 @@ const GraphLab: React.FC = () => {
                   <span>New</span>
                 </button>
                 <button
-                  onClick={() => setActiveView('importExport')}
+                  onClick={() => {
+                    const jsonStr = prompt('Paste Graph JSON data:');
+                    if (jsonStr) {
+                      try {
+                        const parsed = JSON.parse(jsonStr);
+                        if (Array.isArray(parsed.vertices) && Array.isArray(parsed.edges)) {
+                          graph.vertices.forEach((v) => removeVertex(v));
+                          parsed.vertices.forEach((v: string) => addVertex(v));
+                          parsed.edges.forEach((e: { source: string; target: string }) => addEdge(e.source, e.target));
+                          alert('Graph imported successfully!');
+                        }
+                      } catch {
+                        alert('Invalid JSON format');
+                      }
+                    }
+                  }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#090d22] border border-[#161f3e] text-slate-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
                 >
                   <FolderDown size={14} />
                   <span>Import</span>
                 </button>
                 <button
-                  onClick={() => setActiveView('importExport')}
+                  onClick={() => {
+                    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(graph, null, 2));
+                    const dl = document.createElement('a');
+                    dl.setAttribute('href', dataStr);
+                    dl.setAttribute('download', 'graph.json');
+                    dl.click();
+                  }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#090d22] border border-[#161f3e] text-slate-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
                 >
                   <FolderUp size={14} />
@@ -690,11 +710,6 @@ const GraphLab: React.FC = () => {
         {/* VIEW 8: LEARNING MODE */}
         {activeView === 'learning' && (
           <LearningModeView onNavigate={(view) => setActiveView(view)} />
-        )}
-
-        {/* VIEW 9: IMPORT / EXPORT */}
-        {activeView === 'importExport' && (
-          <ImportExportView />
         )}
       </div>
     </div>
