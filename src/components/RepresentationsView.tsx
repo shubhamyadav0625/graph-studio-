@@ -48,8 +48,8 @@ const RepresentationsView: React.FC = () => {
         elements: [],
         boxSelectionEnabled: false,
         autounselectify: false,
-        userZoomingEnabled: false,
-        userPanningEnabled: false,
+        userZoomingEnabled: true,
+        userPanningEnabled: true,
         style: [
           {
             selector: 'node',
@@ -60,8 +60,9 @@ const RepresentationsView: React.FC = () => {
               color: '#ffffff',
               'font-size': '12px',
               'font-weight': 'bold',
+              'font-family': 'ui-sans-serif, system-ui, sans-serif',
               'background-color': '#0284c7',
-              'border-width': 2,
+              'border-width': 2.5,
               'border-color': '#38bdf8',
               width: 32,
               height: 32,
@@ -73,7 +74,7 @@ const RepresentationsView: React.FC = () => {
               width: 2.2,
               'line-color': '#38bdf8',
               'target-arrow-shape': 'none',
-              'curve-style': 'bezier',
+              'curve-style': 'straight',
               opacity: 0.85,
             } as any,
           },
@@ -85,19 +86,20 @@ const RepresentationsView: React.FC = () => {
     const cy = cyRef.current;
     if (!cy) return;
 
+    // Reference coordinates matching the pentagon + center layout
     const referenceCoords: Record<string, { x: number; y: number }> = {
+      A: { x: 130, y: 35 },
+      B: { x: 50, y: 85 },
+      C: { x: 210, y: 85 },
+      D: { x: 130, y: 110 },
+      E: { x: 75, y: 175 },
+      F: { x: 185, y: 175 },
       '1': { x: 130, y: 35 },
       '2': { x: 50, y: 85 },
       '3': { x: 210, y: 85 },
-      '6': { x: 130, y: 110 },
-      '4': { x: 75, y: 175 },
-      '5': { x: 185, y: 175 },
-      'A': { x: 130, y: 35 },
-      'B': { x: 50, y: 85 },
-      'C': { x: 210, y: 85 },
-      'D': { x: 130, y: 110 },
-      'E': { x: 75, y: 175 },
-      'F': { x: 185, y: 175 },
+      '4': { x: 130, y: 110 },
+      '5': { x: 75, y: 175 },
+      '6': { x: 185, y: 175 },
     };
 
     const count = graph.vertices.length;
@@ -108,8 +110,8 @@ const RepresentationsView: React.FC = () => {
       if (!pos) {
         const angle = (2 * Math.PI * index) / Math.max(1, count);
         pos = {
-          x: 130 + 80 * Math.sin(angle),
-          y: 110 - 70 * Math.cos(angle),
+          x: 130 + 75 * Math.sin(angle),
+          y: 110 - 75 * Math.cos(angle),
         };
       }
       elements.push({
@@ -132,8 +134,17 @@ const RepresentationsView: React.FC = () => {
 
     cy.elements().remove();
     cy.add(elements);
-    cy.fit(undefined, 20);
-  }, [graph]);
+
+    // Give the container time to calculate dimensions before fitting
+    const timer = setTimeout(() => {
+      if (cyRef.current) {
+        cyRef.current.resize();
+        cyRef.current.fit(undefined, 25);
+      }
+    }, 60);
+
+    return () => clearTimeout(timer);
+  }, [graph, activeTab]);
 
   return (
     <div className="space-y-4 max-w-7xl mx-auto select-none font-sans">
@@ -161,14 +172,11 @@ const RepresentationsView: React.FC = () => {
           <div className="px-3 py-1.5 rounded-xl bg-[#090d22] border border-[#161f3e] font-semibold text-slate-200">
             |E| = {eCount}
           </div>
-          <div className="px-3 py-1.5 rounded-xl bg-[#090d22] border border-[#161f3e] font-semibold text-slate-200">
-            Type: Undirected
-          </div>
         </div>
       </div>
 
-      {/* Selector Tabs matching Reference Screenshot */}
-      <div className="flex items-center gap-2">
+      {/* Tabs Row matching Screenshot: All Representations, Adjacency List, Adjacency Matrix, Incidence Matrix */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={() => setActiveTab('all')}
           className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
@@ -217,8 +225,15 @@ const RepresentationsView: React.FC = () => {
           {/* Card 1: Current Graph Interactive Canvas */}
           <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between min-w-0">
             <h3 className="text-xs font-bold text-white mb-2">Current Graph</h3>
-            <div className="h-[210px] w-full relative py-1 rounded-xl bg-[#060919] border border-[#121833] overflow-hidden">
-              <div ref={containerRef} className="w-full h-full" />
+            <div
+              className="h-[210px] w-full relative py-1 rounded-xl border border-[#121833] overflow-hidden"
+              style={{
+                backgroundColor: '#060919',
+                backgroundImage: 'radial-gradient(rgba(147, 51, 234, 0.2) 1px, transparent 1px)',
+                backgroundSize: '16px 16px',
+              }}
+            >
+              <div ref={containerRef} className="w-full h-full" style={{ minHeight: '200px' }} />
             </div>
           </div>
 
@@ -319,7 +334,7 @@ const RepresentationsView: React.FC = () => {
                             <td
                               key={eIdx}
                               className={`p-1 text-xs font-semibold ${
-                                isIncident ? 'text-white bg-[#141b3a]' : 'text-slate-500'
+                                isIncident === 1 ? 'text-white bg-[#141b3a]' : 'text-slate-500'
                               }`}
                             >
                               {isIncident}
@@ -336,36 +351,35 @@ const RepresentationsView: React.FC = () => {
         </div>
       )}
 
-      {/* Dedicated View: Adjacency List */}
+      {/* Individual Tab 1: Adjacency List */}
       {activeTab === 'list' && (
-        <div className="p-6 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#141b38] pb-3">
+        <div className="p-5 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-3">
+          <div className="flex items-center justify-between border-b border-[#141b38] pb-2">
             <div>
-              <h3 className="text-sm font-bold text-white">Full Adjacency List Representation</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Each vertex maps to a dynamic list of directly connected neighbor vertices.
+              <h2 className="text-sm font-bold text-white">Adjacency List Representation</h2>
+              <p className="text-xs text-slate-400">
+                Maps each vertex to an array of its directly connected neighbor vertices.
               </p>
             </div>
-            <span className="px-3 py-1 rounded-xl bg-[#0d132e] border border-[#182142] font-mono text-xs text-emerald-400 font-bold">
-              Space: O(V + E)
-            </span>
+            <div className="px-3 py-1 rounded-xl bg-purple-950/40 border border-purple-800 text-purple-300 font-mono text-xs font-semibold">
+              Space Complexity: O(V + E)
+            </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {graph.vertices.map((v, idx) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {graph.vertices.map((v) => (
               <div key={v} className="p-3 rounded-xl bg-[#0d132e] border border-[#182142] flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold ${
-                      idx % 2 === 0 ? 'bg-[#6e2bf5]' : 'bg-[#0284c7]'
-                    }`}
-                  >
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-lg bg-[#6e2bf5] flex items-center justify-center font-bold text-white text-xs">
                     {v}
                   </span>
-                  <span className="text-xs text-slate-400 font-medium">deg({v}) = {(adjList[v] || []).length}</span>
+                  <span className="text-xs text-slate-300">Neighbors:</span>
                 </div>
-                <div className="font-mono text-xs font-semibold text-white">
-                  {(adjList[v] || []).length > 0 ? (adjList[v] || []).join(' → ') : 'Ø'}
+                <div className="font-mono text-xs font-bold text-white">
+                  {(adjList[v] || []).length > 0 ? (
+                    <span className="text-purple-300">[{adjList[v].join(', ')}]</span>
+                  ) : (
+                    <span className="text-slate-500">[]</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -373,28 +387,27 @@ const RepresentationsView: React.FC = () => {
         </div>
       )}
 
-      {/* Dedicated View: Adjacency Matrix */}
+      {/* Individual Tab 2: Adjacency Matrix */}
       {activeTab === 'adjMatrix' && (
-        <div className="p-6 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#141b38] pb-3">
+        <div className="p-5 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-3">
+          <div className="flex items-center justify-between border-b border-[#141b38] pb-2">
             <div>
-              <h3 className="text-sm font-bold text-white">Full Adjacency Matrix ({vCount} × {vCount})</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Binary symmetric matrix where entry (u, v) = 1 represents an edge between u and v.
+              <h2 className="text-sm font-bold text-white">Adjacency Matrix Representation</h2>
+              <p className="text-xs text-slate-400">
+                A 2D array where entry (i, j) is 1 if an edge connects vertex i and vertex j, and 0 otherwise.
               </p>
             </div>
-            <span className="px-3 py-1 rounded-xl bg-[#0d132e] border border-[#182142] font-mono text-xs text-amber-400 font-bold">
-              Space: O(V²)
-            </span>
+            <div className="px-3 py-1 rounded-xl bg-purple-950/40 border border-purple-800 text-purple-300 font-mono text-xs font-semibold">
+              Space Complexity: O(V²)
+            </div>
           </div>
-
           <div className="overflow-x-auto">
-            <table className="w-full text-center border-collapse font-mono text-sm">
+            <table className="w-full text-center border-collapse font-mono text-xs">
               <thead>
                 <tr className="text-slate-400">
-                  <th className="p-2 border border-[#141b38] bg-[#060814]"></th>
+                  <th className="p-2 border border-[#182142] bg-[#0c102a]"></th>
                   {graph.vertices.map((v) => (
-                    <th key={v} className="p-2 border border-[#141b38] bg-[#0b0f29] font-bold text-white">
+                    <th key={v} className="p-2 border border-[#182142] bg-[#0c102a] font-bold text-purple-300">
                       {v}
                     </th>
                   ))}
@@ -403,16 +416,14 @@ const RepresentationsView: React.FC = () => {
               <tbody>
                 {adjMatrix.map((row, i) => (
                   <tr key={i} className="hover:bg-[#121938]">
-                    <td className="p-2 border border-[#141b38] bg-[#0b0f29] font-bold text-white">
+                    <td className="p-2 border border-[#182142] bg-[#0c102a] font-bold text-purple-300">
                       {graph.vertices[i]}
                     </td>
                     {row.map((val, j) => (
                       <td
                         key={j}
-                        className={`p-2 border border-[#141b38] font-bold ${
-                          val === 1
-                            ? 'text-white bg-[#6e2bf5]/30 shadow-[inset_0_0_8px_rgba(110,43,245,0.4)]'
-                            : 'text-slate-600 bg-[#090d22]'
+                        className={`p-2 border border-[#182142] font-semibold ${
+                          val === 1 ? 'text-white bg-[#6e2bf5]/40 shadow-inner' : 'text-slate-600'
                         }`}
                       >
                         {val}
@@ -426,32 +437,28 @@ const RepresentationsView: React.FC = () => {
         </div>
       )}
 
-      {/* Dedicated View: Incidence Matrix */}
+      {/* Individual Tab 3: Incidence Matrix */}
       {activeTab === 'incMatrix' && (
-        <div className="p-6 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-[#141b38] pb-3">
+        <div className="p-5 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-3">
+          <div className="flex items-center justify-between border-b border-[#141b38] pb-2">
             <div>
-              <h3 className="text-sm font-bold text-white">Full Incidence Matrix ({vCount} × {eCount})</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Matrix where entry (v, e) = 1 if vertex v is incident to edge e. Exactly two 1s per column.
+              <h2 className="text-sm font-bold text-white">Incidence Matrix Representation</h2>
+              <p className="text-xs text-slate-400">
+                A (V × E) matrix where entry (v, e) indicates whether vertex v is incident to edge e.
               </p>
             </div>
-            <span className="px-3 py-1 rounded-xl bg-[#0d132e] border border-[#182142] font-mono text-xs text-indigo-400 font-bold">
-              Space: O(V × E)
-            </span>
+            <div className="px-3 py-1 rounded-xl bg-purple-950/40 border border-purple-800 text-purple-300 font-mono text-xs font-semibold">
+              Space Complexity: O(V × E)
+            </div>
           </div>
-
           <div className="overflow-x-auto">
-            <table className="w-full text-center border-collapse font-mono text-sm">
+            <table className="w-full text-center border-collapse font-mono text-xs">
               <thead>
                 <tr className="text-slate-400">
-                  <th className="p-2 border border-[#141b38] bg-[#060814]"></th>
-                  {graph.edges.map((e, idx) => (
-                    <th key={idx} className="p-2 border border-[#141b38] bg-[#0b0f29] font-semibold text-slate-200">
+                  <th className="p-2 border border-[#182142] bg-[#0c102a]"></th>
+                  {graph.edges.map((_, idx) => (
+                    <th key={idx} className="p-2 border border-[#182142] bg-[#0c102a] font-bold text-purple-300">
                       e{idx + 1}
-                      <span className="block text-[10px] text-slate-400 font-normal">
-                        ({e.source}—{e.target})
-                      </span>
                     </th>
                   ))}
                 </tr>
@@ -459,7 +466,7 @@ const RepresentationsView: React.FC = () => {
               <tbody>
                 {graph.vertices.map((v) => (
                   <tr key={v} className="hover:bg-[#121938]">
-                    <td className="p-2 border border-[#141b38] bg-[#0b0f29] font-bold text-white">
+                    <td className="p-2 border border-[#182142] bg-[#0c102a] font-bold text-purple-300">
                       {v}
                     </td>
                     {graph.edges.map((e, eIdx) => {
@@ -467,10 +474,8 @@ const RepresentationsView: React.FC = () => {
                       return (
                         <td
                           key={eIdx}
-                          className={`p-2 border border-[#141b38] font-bold ${
-                            isIncident
-                              ? 'text-white bg-[#0284c7]/30 shadow-[inset_0_0_8px_rgba(2,132,199,0.4)]'
-                              : 'text-slate-600 bg-[#090d22]'
+                          className={`p-2 border border-[#182142] font-semibold ${
+                            isIncident === 1 ? 'text-white bg-[#0284c7]/40' : 'text-slate-600'
                           }`}
                         >
                           {isIncident}
@@ -485,78 +490,61 @@ const RepresentationsView: React.FC = () => {
         </div>
       )}
 
-      {/* Bottom Row: About Representations & Key Insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-        {/* About Representations */}
-        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-2">
+      {/* Bottom Insights and Theory Row matching Screenshot */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        {/* Left Column: About Representations Card (span 8) */}
+        <div className="lg:col-span-8 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-3">
           <div className="flex items-center gap-2">
-            <div className="p-1 rounded-full bg-[#6e2bf5]/20 text-[#c084fc]">
-              <Info size={14} />
+            <div className="text-purple-400">
+              <Info size={16} />
             </div>
             <h3 className="text-xs font-bold text-white">About Representations</h3>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 leading-relaxed">
             Different ways to represent a graph in a computer:
           </p>
-          <div className="space-y-1.5 text-xs text-slate-300">
-            <div className="flex items-start gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#a855f7] mt-1.5 flex-shrink-0" />
+          <ul className="space-y-1.5 text-xs text-slate-300">
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-1.5 flex-shrink-0" />
               <span>
-                <strong className="text-white">Adjacency List</strong> – List of neighbors for each vertex.
+                <strong className="text-white">Adjacency List</strong> — List of neighbors for each vertex.
               </span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#a855f7] mt-1.5 flex-shrink-0" />
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-1.5 flex-shrink-0" />
               <span>
-                <strong className="text-white">Adjacency Matrix</strong> – V × V matrix (1 if edge exists, else 0).
+                <strong className="text-white">Adjacency Matrix</strong> — V × V matrix (1 if edge exists, else 0).
               </span>
-            </div>
-            <div className="flex items-start gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#a855f7] mt-1.5 flex-shrink-0" />
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-1.5 flex-shrink-0" />
               <span>
-                <strong className="text-white">Incidence Matrix</strong> – V × E matrix (1 if vertex is incident to edge).
+                <strong className="text-white">Incidence Matrix</strong> — V × E matrix (1 if vertex is incident to edge).
               </span>
-            </div>
-          </div>
+            </li>
+          </ul>
         </div>
 
-        {/* Key Insights */}
-        <div className="p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-2">
+        {/* Right Column: Key Insights Card (span 4) */}
+        <div className="lg:col-span-4 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-2.5">
           <div className="flex items-center gap-2">
-            <div className="p-1 rounded-full bg-[#a855f7]/20 text-[#c084fc]">
-              <Sparkles size={14} />
+            <div className="text-purple-400">
+              <Sparkles size={16} />
             </div>
             <h3 className="text-xs font-bold text-white">Key Insights</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-            <div className="space-y-2 font-mono text-xs">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-[#0d132e] border border-[#182142]">
-                <span className="text-slate-400 text-[11px]">Space (Adj. List)</span>
-                <span className="text-emerald-400 font-bold">O(V + E)</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-[#0d132e] border border-[#182142]">
-                <span className="text-slate-400 text-[11px]">Space (Adj. Matrix)</span>
-                <span className="text-amber-400 font-bold">O(V²)</span>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-xl bg-[#0d132e] border border-[#182142]">
-                <span className="text-slate-400 text-[11px]">Space (Inc. Matrix)</span>
-                <span className="text-indigo-400 font-bold">O(V × E)</span>
-              </div>
+          <div className="space-y-2 text-xs">
+            <div className="p-2.5 rounded-xl bg-[#0d132e] border border-[#182142] flex items-center justify-between">
+              <span className="text-slate-400">Space (Adj. List)</span>
+              <span className="font-mono font-bold text-emerald-400">O(V + E)</span>
             </div>
-
-            <div className="space-y-1.5 text-xs text-slate-300">
-              <div className="flex items-center gap-2">
-                <span className="text-emerald-400 font-bold">✓</span>
-                <span>Adjacency list is space efficient for sparse graphs.</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-emerald-400 font-bold">✓</span>
-                <span>Adjacency matrix supports O(1) edge lookup.</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-emerald-400 font-bold">✓</span>
-                <span>Incidence matrix is useful in flow & matching algorithms.</span>
-              </div>
+            <div className="p-2.5 rounded-xl bg-[#0d132e] border border-[#182142] flex items-center justify-between">
+              <span className="text-slate-400">Space (Adj. Matrix)</span>
+              <span className="font-mono font-bold text-amber-400">O(V²)</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-[#0d132e] border border-[#182142] flex items-center justify-between">
+              <span className="text-slate-400">Space (Inc. Matrix)</span>
+              <span className="font-mono font-bold text-indigo-400">O(V × E)</span>
             </div>
           </div>
         </div>
