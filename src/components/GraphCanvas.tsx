@@ -65,7 +65,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const [zoomPercent, setZoomPercent] = useState(100);
   const [edgeStart, setEdgeStart] = useState<string | null>(null);
 
-  const { graph, addVertex, addEdge, removeVertex, removeEdge, selected, toggleSelected, clearSelection } = useGraph();
+  const { graph, addVertex, addEdge, removeVertex, removeEdge, selected, toggleSelected, setSelected, clearSelection } = useGraph();
 
   // Stable references for all dynamically updated state and context methods
   const activeToolRef = useRef(activeTool);
@@ -95,6 +95,9 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const toggleSelectedRef = useRef(toggleSelected);
   toggleSelectedRef.current = toggleSelected;
 
+  const setSelectedRef = useRef(setSelected);
+  setSelectedRef.current = setSelected;
+
   const clearSelectionRef = useRef(clearSelection);
   clearSelectionRef.current = clearSelection;
 
@@ -107,6 +110,20 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       setEdgeStart(null);
     }
   }, [activeTool]);
+
+  // Expose auto layout to window
+  const handleLayout = () => {
+    if (!cyRef.current) return;
+    const layout = cyRef.current.layout({
+      name: 'circle',
+      animate: true,
+      animationDuration: 400,
+      padding: 60,
+    } as any);
+    layout.run();
+  };
+
+  (window as any).graphCanvasAutoLayout = handleLayout;
 
   // Initialize Cytoscape
   useEffect(() => {
@@ -213,8 +230,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
         if (!currentEdgeStart) {
           // Select source vertex for edge
           setEdgeStart(id);
-          selectedRef.current = [id];
-          toggleSelectedRef.current(id);
+          setSelectedRef.current([id]);
         } else {
           // Connect source with target vertex
           if (currentEdgeStart !== id) {
@@ -367,18 +383,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     cy.nodes().grabify();
   }, [graph, selected, edgeStart, activeTool]);
 
-  // Expose auto layout to window
-  const handleLayout = () => {
-    if (!cyRef.current) return;
-    const layout = cyRef.current.layout({
-      name: 'circle',
-      animate: true,
-      animationDuration: 400,
-      padding: 60,
-    } as any);
-    layout.run();
-  };
-
   const handleFit = () => {
     if (cyRef.current) {
       cyRef.current.fit(undefined, 40);
@@ -400,6 +404,22 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     }
   };
 
+  // Direct vertex add helper from toolbar
+  const handleDirectAddVertex = () => {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    let nextLabel = 'A';
+    for (let i = 0; i < 26; i++) {
+      if (!graph.vertices.includes(alphabet[i])) {
+        nextLabel = alphabet[i];
+        break;
+      }
+    }
+    if (graph.vertices.includes(nextLabel)) {
+      nextLabel = String(graph.vertices.length + 1);
+    }
+    addVertex(nextLabel);
+  };
+
   return (
     <div className="relative w-full h-full min-h-[440px] select-none">
       {/* Visual Indicator when Add Edge mode is active */}
@@ -415,11 +435,25 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 setEdgeStart(null);
                 clearSelection();
               }}
-              className="ml-2 px-1.5 py-0.5 rounded bg-purple-800 text-[10px] text-purple-200 hover:text-white"
+              className="ml-2 px-1.5 py-0.5 rounded bg-purple-800 text-[10px] text-purple-200 hover:text-white cursor-pointer"
             >
               Cancel
             </button>
           )}
+        </div>
+      )}
+
+      {/* Visual Indicator when Add Vertex mode is active */}
+      {activeTool === 'addVertex' && (
+        <div className="absolute top-4 left-20 z-30 px-3.5 py-1.5 rounded-xl bg-cyan-900/95 border border-cyan-400 text-white text-xs font-semibold shadow-[0_0_20px_rgba(6,182,212,0.7)] flex items-center gap-2">
+          <Plus size={14} className="text-cyan-300" />
+          <span>Click anywhere on the canvas to place a vertex</span>
+          <button
+            onClick={handleDirectAddVertex}
+            className="ml-2 px-2 py-0.5 rounded bg-cyan-800 hover:bg-cyan-700 text-[10px] text-white font-bold cursor-pointer"
+          >
+            + Add Now
+          </button>
         </div>
       )}
 
@@ -450,13 +484,16 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
         </button>
 
         <button
-          onClick={() => onToolChange?.('addVertex')}
+          onClick={() => {
+            const next = activeTool === 'addVertex' ? 'select' : 'addVertex';
+            onToolChange?.(next);
+          }}
           className={`p-2 rounded-xl transition-all cursor-pointer ${
             activeTool === 'addVertex'
-              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
+              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)] ring-2 ring-cyan-400'
               : 'text-slate-400 hover:text-white hover:bg-[#121938]'
           }`}
-          title="Add Vertex"
+          title="Add Vertex (Click canvas or button to place)"
         >
           <Plus size={15} />
         </button>
@@ -472,7 +509,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
               ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)] ring-2 ring-purple-400'
               : 'text-slate-400 hover:text-white hover:bg-[#121938]'
           }`}
-          title="Connect Edge"
+          title="Connect Edge (Click two nodes to connect)"
         >
           <LinkIcon size={15} />
         </button>
