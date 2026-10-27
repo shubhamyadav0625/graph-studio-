@@ -1,5 +1,6 @@
 // src/components/AnalysisPanel.tsx
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import Cytoscape from 'cytoscape';
 import { useGraph } from '../context';
 import { verifyTree } from '../algorithms/verifyTree';
 import { detectCycle } from '../algorithms/detectCycle';
@@ -10,6 +11,9 @@ import { Share2, Check, X } from 'lucide-react';
 
 const AnalysisPanel: React.FC = () => {
   const { graph } = useGraph();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cyRef = useRef<Cytoscape.Core | null>(null);
+
   const treeResult = verifyTree(graph);
   const cycle = detectCycle(graph);
   const components = connectedComponents(graph);
@@ -28,8 +32,116 @@ const AnalysisPanel: React.FC = () => {
   const oddCount = degreeSeq.filter((d) => d % 2 !== 0).length;
   const sumDegrees = degreeSeq.reduce((a, b) => a + b, 0);
 
+  // Dynamic Cytoscape rendering for the Current Graph
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    if (!cyRef.current) {
+      cyRef.current = Cytoscape({
+        container: containerRef.current,
+        elements: [],
+        boxSelectionEnabled: false,
+        autounselectify: false,
+        userZoomingEnabled: true,
+        userPanningEnabled: true,
+        style: [
+          {
+            selector: 'node',
+            style: {
+              label: 'data(label)',
+              'text-valign': 'center',
+              'text-halign': 'center',
+              color: '#ffffff',
+              'font-size': '12px',
+              'font-weight': 'bold',
+              'font-family': 'ui-sans-serif, system-ui, sans-serif',
+              'background-color': '#0284c7',
+              'border-width': 2.5,
+              'border-color': '#38bdf8',
+              width: 32,
+              height: 32,
+            } as any,
+          },
+          {
+            selector: 'edge',
+            style: {
+              width: 2.2,
+              'line-color': '#38bdf8',
+              'target-arrow-shape': 'none',
+              'curve-style': 'straight',
+              opacity: 0.85,
+            } as any,
+          },
+        ],
+        layout: { name: 'preset' },
+      });
+    }
+
+    const cy = cyRef.current;
+    if (!cy) return;
+
+    // Reference positions for common node labels
+    const referenceCoords: Record<string, { x: number; y: number }> = {
+      A: { x: 110, y: 35 },
+      B: { x: 45, y: 85 },
+      C: { x: 175, y: 85 },
+      D: { x: 110, y: 110 },
+      E: { x: 65, y: 170 },
+      F: { x: 155, y: 170 },
+      '1': { x: 110, y: 35 },
+      '2': { x: 45, y: 85 },
+      '3': { x: 175, y: 85 },
+      '6': { x: 110, y: 110 },
+      '4': { x: 65, y: 170 },
+      '5': { x: 155, y: 170 },
+    };
+
+    const count = graph.vertices.length;
+    const elements: Cytoscape.ElementDefinition[] = [];
+
+    graph.vertices.forEach((v, index) => {
+      let pos = referenceCoords[v];
+      if (!pos) {
+        const angle = (2 * Math.PI * index) / Math.max(1, count);
+        pos = {
+          x: 110 + 70 * Math.sin(angle),
+          y: 105 - 65 * Math.cos(angle),
+        };
+      }
+      elements.push({
+        group: 'nodes',
+        data: { id: v, label: v },
+        position: pos,
+      });
+    });
+
+    graph.edges.forEach((e, i) => {
+      elements.push({
+        group: 'edges',
+        data: {
+          id: `e-${e.source}-${e.target}-${i}`,
+          source: e.source,
+          target: e.target,
+        },
+      });
+    });
+
+    cy.elements().remove();
+    cy.add(elements);
+
+    // Give container layout time to settle, then resize and fit
+    const timer = setTimeout(() => {
+      if (cyRef.current) {
+        cyRef.current.resize();
+        cyRef.current.fit(undefined, 25);
+      }
+    }, 60);
+
+    return () => clearTimeout(timer);
+  }, [graph]);
+
   return (
-    <div className="space-y-4 max-w-7xl mx-auto select-none">
+    <div className="space-y-4 max-w-7xl mx-auto select-none font-sans">
       {/* Top Header Banner matching exact Reference Screenshot */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -60,43 +172,20 @@ const AnalysisPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Row: Current Graph SVG, Degree Info, Degree Sequence, Connectivity, Cycle, Tree */}
+      {/* Main Row: Current Graph Dynamic Canvas, Degree Info, Degree Sequence, Connectivity, Cycle, Tree */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3.5 items-stretch">
-        {/* Column 1 (span 2): Current Graph Preview Card */}
+        {/* Column 1 (span 2): Dynamic Current Graph Canvas Card */}
         <div className="lg:col-span-2 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
           <h3 className="text-xs font-bold text-white mb-2">Current Graph</h3>
-          <div className="flex-1 flex items-center justify-center py-2 relative">
-            <svg width="220" height="200" viewBox="0 0 220 200" className="overflow-visible">
-              {/* Outer edges */}
-              <line x1="110" y1="30" x2="45" y2="75" stroke="#38bdf8" strokeWidth="2.5" />
-              <line x1="110" y1="30" x2="175" y2="75" stroke="#38bdf8" strokeWidth="2.5" />
-              <line x1="45" y1="75" x2="65" y2="165" stroke="#38bdf8" strokeWidth="2.5" />
-              <line x1="175" y1="75" x2="155" y2="165" stroke="#38bdf8" strokeWidth="2.5" />
-              <line x1="65" y1="165" x2="155" y2="165" stroke="#38bdf8" strokeWidth="2.5" />
-              {/* Inner edges to center node 6 */}
-              <line x1="110" y1="30" x2="110" y2="105" stroke="#38bdf8" strokeWidth="2.5" />
-              <line x1="45" y1="75" x2="110" y2="105" stroke="#38bdf8" strokeWidth="2.5" />
-              <line x1="175" y1="75" x2="110" y2="105" stroke="#38bdf8" strokeWidth="2.5" />
-
-              {/* Vertices */}
-              <circle cx="110" cy="30" r="14" fill="#2563eb" className="drop-shadow-[0_0_10px_rgba(59,130,246,0.9)]" />
-              <text x="110" y="34" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">1</text>
-
-              <circle cx="45" cy="75" r="14" fill="#0284c7" className="drop-shadow-[0_0_10px_rgba(2,132,199,0.9)]" />
-              <text x="45" y="79" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">2</text>
-
-              <circle cx="175" cy="75" r="14" fill="#9333ea" className="drop-shadow-[0_0_12px_rgba(147,51,234,0.9)]" />
-              <text x="175" y="79" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">3</text>
-
-              <circle cx="110" cy="105" r="14" fill="#0284c7" className="drop-shadow-[0_0_10px_rgba(2,132,199,0.9)]" />
-              <text x="110" y="109" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">6</text>
-
-              <circle cx="65" cy="165" r="14" fill="#0284c7" className="drop-shadow-[0_0_10px_rgba(2,132,199,0.9)]" />
-              <text x="65" y="169" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">4</text>
-
-              <circle cx="155" cy="165" r="14" fill="#0284c7" className="drop-shadow-[0_0_10px_rgba(2,132,199,0.9)]" />
-              <text x="155" y="169" fill="#ffffff" fontSize="12" fontWeight="bold" textAnchor="middle">5</text>
-            </svg>
+          <div
+            className="flex-1 w-full min-h-[200px] h-[210px] relative rounded-xl border border-[#121833] overflow-hidden"
+            style={{
+              backgroundColor: '#060919',
+              backgroundImage: 'radial-gradient(rgba(147, 51, 234, 0.2) 1px, transparent 1px)',
+              backgroundSize: '16px 16px',
+            }}
+          >
+            <div ref={containerRef} className="w-full h-full" />
           </div>
         </div>
 
@@ -107,12 +196,12 @@ const AnalysisPanel: React.FC = () => {
             <span>Vertex</span>
             <span className="text-right">Degree</span>
           </div>
-          <div className="space-y-1 overflow-y-auto max-h-52">
+          <div className="space-y-1 overflow-y-auto max-h-52 font-mono text-xs">
             {graph.vertices.map((v, idx) => (
               <div key={v} className="flex items-center justify-between py-1 px-1.5 rounded-lg bg-[#0d132e]">
                 <div
                   className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold ${
-                    idx === 2 ? 'bg-[#9333ea]' : 'bg-[#2563eb]'
+                    idx % 3 === 0 ? 'bg-[#9333ea]' : 'bg-[#2563eb]'
                   }`}
                 >
                   {v}
@@ -131,7 +220,7 @@ const AnalysisPanel: React.FC = () => {
             <h3 className="text-xs font-bold text-white mb-2">Degree Sequence</h3>
             <div className="p-2 rounded-xl bg-[#141038] border border-[#2d226a] text-center mb-2.5">
               <span className="font-mono text-xs font-bold text-[#c084fc]">
-                ({degreeSeq.join(', ')})
+                ({degreeSeq.join(', ') || '0'})
               </span>
             </div>
             <div className="space-y-1.5 text-[11px] text-slate-300">
@@ -165,7 +254,7 @@ const AnalysisPanel: React.FC = () => {
               </span>
             </div>
             <p className="text-[10px] text-slate-400 leading-snug">
-              Components: {components.length} (every vertex is reachable).
+              Components: {components.length} {isConnected ? '(every vertex is reachable).' : '(graph is disconnected).'}
             </p>
           </div>
 
@@ -178,7 +267,7 @@ const AnalysisPanel: React.FC = () => {
               </span>
             </div>
             <p className="text-[10px] text-slate-400 leading-snug">
-              {hasCycle ? 'At least one cycle exists (e.g. 1-2-6-1).' : 'No cycles found.'}
+              {hasCycle ? `Cycle detected (${cycle.join(' → ')}).` : 'No cycles found.'}
             </p>
           </div>
 
@@ -204,7 +293,7 @@ const AnalysisPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Row: Property Summary Table & Other Properties Grid matching Reference Screenshot */}
+      {/* Bottom Row: Property Summary Table & Other Properties Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
         {/* Left Property Summary Table (span 5) */}
         <div className="lg:col-span-5 p-4 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl flex flex-col justify-between">
@@ -213,38 +302,32 @@ const AnalysisPanel: React.FC = () => {
             <div className="divide-y divide-[#141b38] text-xs">
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-slate-300">Connected</span>
-                <span className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
-                  <Check size={13} strokeWidth={3} /> Yes
+                <span className={`flex items-center gap-1 font-bold text-[11px] ${isConnected ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {isConnected ? <><Check size={13} strokeWidth={3} /> Yes</> : <><X size={13} strokeWidth={3} /> No</>}
                 </span>
               </div>
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-slate-300">Contains Cycle</span>
-                <span className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
-                  <Check size={13} strokeWidth={3} /> Yes
+                <span className={`flex items-center gap-1 font-bold text-[11px] ${hasCycle ? 'text-emerald-400' : 'text-slate-400'}`}>
+                  {hasCycle ? <><Check size={13} strokeWidth={3} /> Yes</> : <><X size={13} strokeWidth={3} /> No</>}
                 </span>
               </div>
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-slate-300">Bipartite</span>
-                <span className="flex items-center gap-1 text-rose-400 font-bold text-[11px]">
-                  <X size={13} strokeWidth={3} /> No
+                <span className={`flex items-center gap-1 font-bold text-[11px] ${bipartiteResult.isBipartite ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {bipartiteResult.isBipartite ? <><Check size={13} strokeWidth={3} /> Yes</> : <><X size={13} strokeWidth={3} /> No</>}
                 </span>
               </div>
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-slate-300">Eulerian</span>
-                <span className="flex items-center gap-1 text-rose-400 font-bold text-[11px]">
-                  <X size={13} strokeWidth={3} /> No
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-slate-300">Hamiltonian</span>
-                <span className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
-                  <Check size={13} strokeWidth={3} /> Yes
+                <span className={`flex items-center gap-1 font-bold text-[11px] ${eulerianResult.hasEulerianCircuit || eulerianResult.hasEulerianPath ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {eulerianResult.hasEulerianCircuit || eulerianResult.hasEulerianPath ? <><Check size={13} strokeWidth={3} /> Yes</> : <><X size={13} strokeWidth={3} /> No</>}
                 </span>
               </div>
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-slate-300">Planar (Basic Check)</span>
-                <span className="flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
-                  <Check size={13} strokeWidth={3} /> Yes
+                <span className={`flex items-center gap-1 font-bold text-[11px] ${eCount <= Math.max(0, 3 * vCount - 6) || vCount <= 2 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {eCount <= Math.max(0, 3 * vCount - 6) || vCount <= 2 ? <><Check size={13} strokeWidth={3} /> Yes</> : <><X size={13} strokeWidth={3} /> No</>}
                 </span>
               </div>
             </div>
@@ -262,7 +345,7 @@ const AnalysisPanel: React.FC = () => {
               </span>
             </div>
             <p className="text-[10px] text-slate-400 leading-relaxed">
-              {bipartiteResult.isBipartite ? '2-colorable graph with no odd cycles.' : 'Odd cycle exists.'}
+              {bipartiteResult.isBipartite ? '2-colorable graph with no odd cycles.' : (bipartiteResult.oddCycle ? `Odd cycle detected (${bipartiteResult.oddCycle.join(' → ')}).` : 'Odd cycle exists.')}
             </p>
           </div>
 
@@ -284,11 +367,13 @@ const AnalysisPanel: React.FC = () => {
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-white">Hamiltonian</h4>
               <span className="text-[11px] font-bold text-emerald-400">
-                ✓ Hamiltonian
+                ✓ Evaluation
               </span>
             </div>
             <p className="text-[10px] text-slate-400 leading-relaxed">
-              A Hamiltonian cycle exists (e.g., 1-2-4-5-3-6-1).
+              {vCount >= 3 && degreeSeq.every((d) => d >= vCount / 2)
+                ? "Satisfies Dirac's condition (deg(v) ≥ n/2)."
+                : 'Contains Hamiltonian candidate paths.'}
             </p>
           </div>
 
@@ -296,12 +381,12 @@ const AnalysisPanel: React.FC = () => {
           <div className="p-3.5 rounded-2xl bg-[#090d22] border border-[#161f3e] shadow-xl space-y-1">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-white">Planar</h4>
-              <span className="text-[11px] font-bold text-emerald-400">
-                ✓ Likely Planar
+              <span className={`text-[11px] font-bold ${eCount <= Math.max(0, 3 * vCount - 6) || vCount <= 2 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {eCount <= Math.max(0, 3 * vCount - 6) || vCount <= 2 ? '✓ Likely Planar' : '✕ Non-Planar'}
               </span>
             </div>
             <p className="text-[10px] text-slate-400 leading-relaxed">
-              Satisfies planar graph bound (E ≤ 3V - 6): {eCount} ≤ {Math.max(0, 3 * vCount - 6)}.
+              Satisfies planar bound (E ≤ 3V - 6): {eCount} ≤ {Math.max(0, 3 * vCount - 6)}.
             </p>
           </div>
         </div>
