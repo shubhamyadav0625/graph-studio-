@@ -2,10 +2,13 @@
 # https://render.com/docs/blueprint-spec
 services:
   - type: web
-    name: graph-studio
+    name: graph-studio-
     runtime: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
     routes:
       - type: rewrite
         source: /*
