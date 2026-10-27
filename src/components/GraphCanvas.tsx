@@ -65,26 +65,48 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const [zoomPercent, setZoomPercent] = useState(100);
   const [edgeStart, setEdgeStart] = useState<string | null>(null);
 
-  // Store activeTool in a ref so Cytoscape event handlers always access the latest value
+  const { graph, addVertex, addEdge, removeVertex, removeEdge, selected, toggleSelected, clearSelection } = useGraph();
+
+  // Stable references for all dynamically updated state and context methods
   const activeToolRef = useRef(activeTool);
+  activeToolRef.current = activeTool;
+
+  const edgeStartRef = useRef(edgeStart);
+  edgeStartRef.current = edgeStart;
+
+  const graphRef = useRef(graph);
+  graphRef.current = graph;
+
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
+
+  const addEdgeRef = useRef(addEdge);
+  addEdgeRef.current = addEdge;
+
+  const addVertexRef = useRef(addVertex);
+  addVertexRef.current = addVertex;
+
+  const removeVertexRef = useRef(removeVertex);
+  removeVertexRef.current = removeVertex;
+
+  const removeEdgeRef = useRef(removeEdge);
+  removeEdgeRef.current = removeEdge;
+
+  const toggleSelectedRef = useRef(toggleSelected);
+  toggleSelectedRef.current = toggleSelected;
+
+  const clearSelectionRef = useRef(clearSelection);
+  clearSelectionRef.current = clearSelection;
+
+  const onToolChangeRef = useRef(onToolChange);
+  onToolChangeRef.current = onToolChange;
+
+  // Clear edgeStart when switching away from addEdge tool
   useEffect(() => {
-    activeToolRef.current = activeTool;
     if (activeTool !== 'addEdge') {
       setEdgeStart(null);
     }
   }, [activeTool]);
-
-  const edgeStartRef = useRef(edgeStart);
-  useEffect(() => {
-    edgeStartRef.current = edgeStart;
-  }, [edgeStart]);
-
-  const { graph, addVertex, addEdge, removeVertex, removeEdge, selected, toggleSelected, clearSelection } = useGraph();
-
-  const graphRef = useRef(graph);
-  useEffect(() => {
-    graphRef.current = graph;
-  }, [graph]);
 
   // Initialize Cytoscape
   useEffect(() => {
@@ -180,7 +202,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
     const cy = cyRef.current!;
 
-    // Tap on node: handle selection, addEdge, or delete
+    // Tap on node: handle addEdge, selection, or delete
     cy.on('tap', 'node', (evt) => {
       const node = evt.target;
       const id = node.id() as VertexId;
@@ -189,21 +211,24 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
       if (currentTool === 'addEdge') {
         if (!currentEdgeStart) {
+          // Select source vertex for edge
           setEdgeStart(id);
-          toggleSelected(id);
+          selectedRef.current = [id];
+          toggleSelectedRef.current(id);
         } else {
+          // Connect source with target vertex
           if (currentEdgeStart !== id) {
-            addEdge(currentEdgeStart, id);
+            addEdgeRef.current(currentEdgeStart, id);
           }
           setEdgeStart(null);
-          clearSelection();
+          clearSelectionRef.current();
+          onToolChangeRef.current?.('select');
         }
       } else if (currentTool === 'delete') {
-        removeVertex(id);
+        removeVertexRef.current(id);
       } else {
-        // In select or default mode:
-        // If user already had 1 node selected and clicks another node while holding or wanting to link:
-        toggleSelected(id);
+        // Pointer / Select tool
+        toggleSelectedRef.current(id);
       }
     });
 
@@ -215,12 +240,12 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
         const source = edge.data('source');
         const target = edge.data('target');
         if (source && target) {
-          removeEdge(source, target);
+          removeEdgeRef.current(source, target);
         }
       }
     });
 
-    // Tap on empty canvas background
+    // Tap on empty canvas background: add vertex or clear selection
     cy.on('tap', (event) => {
       if (event.target === cy) {
         const currentTool = activeToolRef.current;
@@ -243,7 +268,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
           if (currentVertices.includes(nextLabel)) {
             nextLabel = String(currentVertices.length + 1);
           }
-          addVertex(nextLabel);
+          addVertexRef.current(nextLabel);
 
           setTimeout(() => {
             const added = cy.$(`node#${nextLabel}`);
@@ -252,7 +277,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
             }
           }, 40);
         } else {
-          clearSelection();
+          clearSelectionRef.current();
           setEdgeStart(null);
         }
       }
@@ -268,7 +293,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     };
   }, [showWeights]);
 
-  // Sync elements & apply styles
+  // Sync Cytoscape elements with current graph
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
@@ -276,6 +301,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const currentNodeIds = new Set(cy.nodes().map((n) => n.id()));
     const graphNodeIds = new Set(graph.vertices);
 
+    // 1. Add missing nodes
     graph.vertices.forEach((v, index) => {
       if (!currentNodeIds.has(v)) {
         const presetPos = REFERENCE_COORDS[v];
@@ -290,12 +316,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       }
     });
 
+    // 2. Remove deleted nodes
     currentNodeIds.forEach((id) => {
       if (!graphNodeIds.has(id)) {
         cy.$(`node#${id}`).remove();
       }
     });
 
+    // 3. Sync edges
     const makeEdgeId = (s: string, t: string) => `e_${[s, t].sort().join('_')}`;
     const currentEdgeIds = new Set(cy.edges().map((e) => e.id()));
     const graphEdgeIds = new Set<string>();
@@ -321,11 +349,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       }
     });
 
-    // Reset classes
+    // 4. Highlight selection & active edge creation
     cy.nodes().removeClass('selected visited in-queue path-node');
     cy.edges().removeClass('path-edge');
 
-    // Highlight selected nodes or active edge creation source
     selected.forEach((id) => {
       cy.$(`node#${id}`).addClass('selected');
     });
@@ -334,7 +361,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       cy.$(`node#${edgeStart}`).addClass('selected');
     }
 
-    // Panning & dragging control based on active tool
+    // 5. Tool behavior
     cy.userPanningEnabled(activeTool === 'pan' || activeTool === 'move');
     cy.boxSelectionEnabled(false);
     cy.nodes().grabify();
@@ -377,11 +404,22 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     <div className="relative w-full h-full min-h-[440px] select-none">
       {/* Visual Indicator when Add Edge mode is active */}
       {activeTool === 'addEdge' && (
-        <div className="absolute top-4 left-20 z-30 px-3 py-1.5 rounded-xl bg-purple-900/90 border border-purple-500/80 text-white text-xs font-semibold shadow-xl flex items-center gap-2 animate-pulse">
-          <LinkIcon size={14} className="text-purple-300" />
+        <div className="absolute top-4 left-20 z-30 px-3.5 py-1.5 rounded-xl bg-purple-900/95 border border-purple-400 text-white text-xs font-semibold shadow-[0_0_20px_rgba(147,51,234,0.7)] flex items-center gap-2">
+          <LinkIcon size={14} className="text-purple-300 animate-spin" />
           <span>
-            {edgeStart ? `Click second node to connect with ${edgeStart}` : 'Click first node to start edge'}
+            {edgeStart ? `Click 2nd node to connect with [${edgeStart}]` : 'Step 1: Click 1st node'}
           </span>
+          {edgeStart && (
+            <button
+              onClick={() => {
+                setEdgeStart(null);
+                clearSelection();
+              }}
+              className="ml-2 px-1.5 py-0.5 rounded bg-purple-800 text-[10px] text-purple-200 hover:text-white"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       )}
 
@@ -424,10 +462,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
         </button>
 
         <button
-          onClick={() => onToolChange?.(activeTool === 'addEdge' ? 'select' : 'addEdge')}
+          onClick={() => {
+            const next = activeTool === 'addEdge' ? 'select' : 'addEdge';
+            onToolChange?.(next);
+            if (next === 'select') setEdgeStart(null);
+          }}
           className={`p-2 rounded-xl transition-all cursor-pointer ${
             activeTool === 'addEdge'
-              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)]'
+              ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)] ring-2 ring-purple-400'
               : 'text-slate-400 hover:text-white hover:bg-[#121938]'
           }`}
           title="Connect Edge"
