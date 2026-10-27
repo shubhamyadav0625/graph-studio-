@@ -310,7 +310,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       cy.destroy();
       cyRef.current = null;
     };
-  }, [showWeights, isDirected]);
+  }, []);
 
   // Sync Cytoscape elements with current graph
   useEffect(() => {
@@ -361,7 +361,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     });
 
     // 3. Sync edges
-    const makeEdgeId = (s: string, t: string) => isDirected ? `e_${s}_${t}` : `e_${[s, t].sort().join('_')}`;
+    const makeEdgeId = (s: string, t: string) => (isDirected ? `e_${s}_${t}` : `e_${[s, t].sort().join('_')}`);
     const currentEdgeIds = new Set(cy.edges().map((e) => e.id()));
     const graphEdgeIds = new Set<string>();
 
@@ -385,6 +385,21 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
         cy.$(`edge#${id}`).remove();
       }
     });
+
+    // Dynamically update edge styles (arrows & curve) whenever isDirected or showWeights changes
+    cy.style()
+      .selector('edge')
+      .style({
+        width: 2.8,
+        'line-color': '#0284c7',
+        opacity: 0.9,
+        'curve-style': isDirected ? 'bezier' : 'straight',
+        'target-arrow-shape': isDirected ? 'triangle' : 'none',
+        'target-arrow-color': '#38bdf8',
+        'arrow-scale': 1.25,
+        label: showWeights ? 'data(weight)' : '',
+      } as any)
+      .update();
 
     // 4. Highlight selection & active edge creation
     cy.nodes().removeClass('selected visited in-queue path-node');
