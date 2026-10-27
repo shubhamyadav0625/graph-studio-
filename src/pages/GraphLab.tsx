@@ -69,15 +69,21 @@ const GraphLab: React.FC = () => {
   const selectedVertex = selected[0] || (graph.vertices.includes('D') ? 'D' : graph.vertices[0] || null);
 
   let degree = 0;
+  let inDegree = 0;
+  let outDegree = 0;
   const neighbors: string[] = [];
   if (selectedVertex) {
     graph.edges.forEach(({ source, target }) => {
       if (source === selectedVertex) {
         degree += 1;
+        outDegree += 1;
         neighbors.push(target);
       } else if (target === selectedVertex) {
         degree += 1;
-        neighbors.push(source);
+        inDegree += 1;
+        if (!isDirected) {
+          neighbors.push(source);
+        }
       }
     });
   }
@@ -118,7 +124,11 @@ const GraphLab: React.FC = () => {
 
   const density =
     graph.vertices.length > 1
-      ? ((2 * graph.edges.length) / (graph.vertices.length * (graph.vertices.length - 1))).toFixed(2)
+      ? (
+          isDirected
+            ? graph.edges.length / (graph.vertices.length * (graph.vertices.length - 1))
+            : (2 * graph.edges.length) / (graph.vertices.length * (graph.vertices.length - 1))
+        ).toFixed(2)
       : '0.00';
 
   const degreeSequence = graph.vertices
@@ -284,6 +294,7 @@ const GraphLab: React.FC = () => {
                   activeTool={activeTool}
                   onToolChange={setActiveTool}
                   showWeights={isWeighted}
+                  isDirected={isDirected}
                 />
               </div>
 
@@ -322,9 +333,14 @@ const GraphLab: React.FC = () => {
                       </div>
                       <div>
                         <div className="font-bold text-sm text-white">Vertex {selectedVertex || 'D'}</div>
-                        <div className="text-xs text-slate-400">Degree: {degree || 4}</div>
+                        <div className="text-xs text-slate-400">
+                          {isDirected
+                            ? `In: ${inDegree} | Out: ${outDegree} (Deg: ${degree})`
+                            : `Degree: ${degree || 4}`}
+                        </div>
                         <div className="text-[11px] text-slate-400">
-                          Neighbors: {neighbors.length > 0 ? neighbors.join(', ') : 'A, B, C, E, F'}
+                          {isDirected ? 'Out-Neighbors: ' : 'Neighbors: '}
+                          {neighbors.length > 0 ? neighbors.join(', ') : 'None'}
                         </div>
                       </div>
                     </div>
@@ -493,7 +509,7 @@ const GraphLab: React.FC = () => {
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Check size={14} className="text-emerald-400" />
-                        <span>Undirected</span>
+                        <span>{isDirected ? 'Directed' : 'Undirected'}</span>
                       </span>
                     </div>
                   </div>
@@ -509,9 +525,11 @@ const GraphLab: React.FC = () => {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 max-h-[160px] overflow-y-auto">
                     {graph.vertices.map((v) => {
-                      const nbs = graph.edges
-                        .filter((e) => e.source === v || e.target === v)
-                        .map((e) => (e.source === v ? e.target : e.source));
+                      const nbs = isDirected
+                        ? graph.edges.filter((e) => e.source === v).map((e) => e.target)
+                        : graph.edges
+                            .filter((e) => e.source === v || e.target === v)
+                            .map((e) => (e.source === v ? e.target : e.source));
                       return (
                         <div key={v} className="p-2.5 rounded-xl bg-[#0d132e] border border-[#182142] flex flex-col justify-between font-mono text-xs">
                           <span className="font-bold text-[#38bdf8]">{v}</span>
@@ -549,9 +567,11 @@ const GraphLab: React.FC = () => {
                           <tr key={u} className="hover:bg-[#121938]">
                             <td className="p-1 font-bold text-white">{u}</td>
                             {graph.vertices.map((v) => {
-                              const isConnected = graph.edges.some(
-                                (e) => (e.source === u && e.target === v) || (e.source === v && e.target === u)
-                              );
+                              const isConnected = isDirected
+                                ? graph.edges.some((e) => e.source === u && e.target === v)
+                                : graph.edges.some(
+                                    (e) => (e.source === u && e.target === v) || (e.source === v && e.target === u)
+                                  );
                               return (
                                 <td
                                   key={v}
@@ -595,15 +615,21 @@ const GraphLab: React.FC = () => {
                           <tr key={v} className="hover:bg-[#121938]">
                             <td className="p-1 font-bold text-white">{v}</td>
                             {graph.edges.map((e, idx) => {
-                              const isIncident = e.source === v || e.target === v;
+                              let cellVal = 0;
+                              if (isDirected) {
+                                if (e.source === v) cellVal = -1;
+                                else if (e.target === v) cellVal = 1;
+                              } else {
+                                if (e.source === v || e.target === v) cellVal = 1;
+                              }
                               return (
                                 <td
                                   key={idx}
                                   className={`p-1 font-bold ${
-                                    isIncident ? 'text-white bg-[#0284c7]/30' : 'text-slate-500'
+                                    cellVal !== 0 ? 'text-white bg-[#0284c7]/30' : 'text-slate-500'
                                   }`}
                                 >
-                                  {isIncident ? 1 : 0}
+                                  {cellVal}
                                 </td>
                               );
                             })}
