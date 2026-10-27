@@ -65,7 +65,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const [zoomPercent, setZoomPercent] = useState(100);
   const [edgeStart, setEdgeStart] = useState<string | null>(null);
 
-  const { graph, addVertex, addEdge, removeVertex, removeEdge, selected, toggleSelected, setSelected, clearSelection } = useGraph();
+  const { graph, addVertex, addEdge, removeVertex, removeEdge, selected, toggleSelected, clearSelection } = useGraph();
 
   // Stable references for all dynamically updated state and context methods
   const activeToolRef = useRef(activeTool);
@@ -94,9 +94,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
   const toggleSelectedRef = useRef(toggleSelected);
   toggleSelectedRef.current = toggleSelected;
-
-  const setSelectedRef = useRef(setSelected);
-  setSelectedRef.current = setSelected;
 
   const clearSelectionRef = useRef(clearSelection);
   clearSelectionRef.current = clearSelection;
@@ -230,7 +227,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
         if (!currentEdgeStart) {
           // Select source vertex for edge
           setEdgeStart(id);
-          setSelectedRef.current([id]);
         } else {
           // Connect source with target vertex
           if (currentEdgeStart !== id) {

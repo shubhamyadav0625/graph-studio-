@@ -101,8 +101,9 @@ const GraphLab: React.FC = () => {
     if (selected.length >= 2) {
       addEdge(selected[0], selected[1]);
       clearSelection();
+      setActiveTool('select');
     } else {
-      setActiveTool('addEdge');
+      setActiveTool((prev) => (prev === 'addEdge' ? 'select' : 'addEdge'));
     }
   };
 
