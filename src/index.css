@@ -3,24 +3,24 @@
 
 @layer base {
   :root {
-    --bg-main: #f8fafc;
-    --card-bg: #ffffff;
-    --card-border: #e2e8f0;
-    --text-primary: #0f172a;
-    --text-muted: #64748b;
+    --bg-main: #060814;
+    --card-bg: #090d22;
+    --card-border: #161f3e;
+    --text-primary: #f8fafc;
+    --text-muted: #94a3b8;
   }
 
   html.dark {
-    --bg-main: #060913;
-    --card-bg: #0b1120;
-    --card-border: #17213c;
+    --bg-main: #060814;
+    --card-bg: #090d22;
+    --card-border: #161f3e;
     --text-primary: #f8fafc;
     --text-muted: #94a3b8;
   }
 
   body {
-    background-color: var(--bg-main);
-    color: var(--text-primary);
+    background-color: #060814;
+    color: #f8fafc;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     overflow-x: hidden;
     transition: background-color 0.2s ease, color 0.2s ease;
