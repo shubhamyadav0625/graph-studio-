@@ -65,6 +65,9 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const [zoomPercent, setZoomPercent] = useState(100);
   const [edgeStart, setEdgeStart] = useState<string | null>(null);
 
+  // Store placed positions for newly added vertices
+  const placedPositionsRef = useRef<Record<string, { x: number; y: number }>>({});
+
   const { graph, addVertex, addEdge, removeVertex, removeEdge, selected, toggleSelected, clearSelection } = useGraph();
 
   // Stable references for all dynamically updated state and context methods
@@ -121,6 +124,22 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   };
 
   (window as any).graphCanvasAutoLayout = handleLayout;
+
+  // Helper to compute next vertex label
+  const getNextVertexLabel = () => {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const current = graphRef.current.vertices;
+    for (let i = 0; i < alphabet.length; i++) {
+      if (!current.includes(alphabet[i])) {
+        return alphabet[i];
+      }
+    }
+    let num = 1;
+    while (current.includes(String(num))) {
+      num++;
+    }
+    return String(num);
+  };
 
   // Initialize Cytoscape
   useEffect(() => {
@@ -264,30 +283,13 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
         if (currentTool === 'addVertex') {
           const pan = cy.pan();
           const zoom = cy.zoom();
-          const pos = event.renderedPosition;
+          const pos = event.position || event.renderedPosition;
           const x = (pos.x - pan.x) / zoom;
           const y = (pos.y - pan.y) / zoom;
 
-          const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-          let nextLabel = 'A';
-          const currentVertices = graphRef.current.vertices;
-          for (let i = 0; i < 26; i++) {
-            if (!currentVertices.includes(alphabet[i])) {
-              nextLabel = alphabet[i];
-              break;
-            }
-          }
-          if (currentVertices.includes(nextLabel)) {
-            nextLabel = String(currentVertices.length + 1);
-          }
+          const nextLabel = getNextVertexLabel();
+          placedPositionsRef.current[nextLabel] = { x: Math.round(x), y: Math.round(y) };
           addVertexRef.current(nextLabel);
-
-          setTimeout(() => {
-            const added = cy.$(`node#${nextLabel}`);
-            if (added.length > 0) {
-              added.position({ x, y });
-            }
-          }, 40);
         } else {
           clearSelectionRef.current();
           setEdgeStart(null);
@@ -313,17 +315,34 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const currentNodeIds = new Set(cy.nodes().map((n) => n.id()));
     const graphNodeIds = new Set(graph.vertices);
 
-    // 1. Add missing nodes
+    // 1. Add missing nodes with reliable positioning
     graph.vertices.forEach((v, index) => {
       if (!currentNodeIds.has(v)) {
+        // Check placed position, then reference coords, then calculate nice open space
+        const placed = placedPositionsRef.current[v];
         const presetPos = REFERENCE_COORDS[v];
-        const defaultX = presetPos ? presetPos.x : 200 + (index % 4) * 110;
-        const defaultY = presetPos ? presetPos.y : 150 + Math.floor(index / 4) * 100;
+        const count = graph.vertices.length;
+        
+        let posX = 380;
+        let posY = 270;
+
+        if (placed) {
+          posX = placed.x;
+          posY = placed.y;
+        } else if (presetPos) {
+          posX = presetPos.x;
+          posY = presetPos.y;
+        } else {
+          // Circular placement around center
+          const angle = (2 * Math.PI * index) / Math.max(1, count);
+          posX = 380 + Math.round(160 * Math.sin(angle));
+          posY = 270 - Math.round(130 * Math.cos(angle));
+        }
 
         cy.add({
           group: 'nodes',
           data: { id: v, label: v },
-          position: { x: defaultX, y: defaultY },
+          position: { x: posX, y: posY },
         });
       }
     });
@@ -332,6 +351,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     currentNodeIds.forEach((id) => {
       if (!graphNodeIds.has(id)) {
         cy.$(`node#${id}`).remove();
+        delete placedPositionsRef.current[id];
       }
     });
 
@@ -373,7 +393,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       cy.$(`node#${edgeStart}`).addClass('selected');
     }
 
-    // 5. Tool behavior
+    // 5. Tool behavior: dragging/panning
     cy.userPanningEnabled(activeTool === 'pan' || activeTool === 'move');
     cy.boxSelectionEnabled(false);
     cy.nodes().grabify();
@@ -400,19 +420,12 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
     }
   };
 
-  // Direct vertex add helper from toolbar
+  // Direct vertex add helper from toolbar button
   const handleDirectAddVertex = () => {
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let nextLabel = 'A';
-    for (let i = 0; i < 26; i++) {
-      if (!graph.vertices.includes(alphabet[i])) {
-        nextLabel = alphabet[i];
-        break;
-      }
-    }
-    if (graph.vertices.includes(nextLabel)) {
-      nextLabel = String(graph.vertices.length + 1);
-    }
+    const nextLabel = getNextVertexLabel();
+    // Stagger slightly from center
+    const offset = (graph.vertices.length % 5) * 45;
+    placedPositionsRef.current[nextLabel] = { x: 380 + offset, y: 270 + offset };
     addVertex(nextLabel);
   };
 
@@ -443,10 +456,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       {activeTool === 'addVertex' && (
         <div className="absolute top-4 left-20 z-30 px-3.5 py-1.5 rounded-xl bg-cyan-900/95 border border-cyan-400 text-white text-xs font-semibold shadow-[0_0_20px_rgba(6,182,212,0.7)] flex items-center gap-2">
           <Plus size={14} className="text-cyan-300" />
-          <span>Click anywhere on the canvas to place a vertex</span>
+          <span>Click anywhere on canvas to place a vertex</span>
           <button
             onClick={handleDirectAddVertex}
-            className="ml-2 px-2 py-0.5 rounded bg-cyan-800 hover:bg-cyan-700 text-[10px] text-white font-bold cursor-pointer"
+            className="ml-2 px-2.5 py-0.5 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-[11px] text-white font-bold cursor-pointer transition-colors shadow-md"
           >
             + Add Now
           </button>
@@ -489,7 +502,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
               ? 'bg-gradient-to-r from-[#6e2bf5] to-[#8d41f8] text-white shadow-[0_0_12px_rgba(110,43,245,0.8)] ring-2 ring-cyan-400'
               : 'text-slate-400 hover:text-white hover:bg-[#121938]'
           }`}
-          title="Add Vertex (Click canvas or button to place)"
+          title="Add Vertex (Click canvas to place)"
         >
           <Plus size={15} />
         </button>
